@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "ising2d_jackknife.jl"))
 
 using .Ising2DTutorial
-using JkTools
+using JackknifeTools
 
 const ROOT = @__DIR__
 const FIGURE_DIR = joinpath(ROOT, "figures")
@@ -101,15 +101,16 @@ end
 function write_time_series_svg(path, measurements)
     width = 900
     height = 540
-    xs = collect(1:length(measurements.energies))
+    nshow = min(1500, length(measurements.energies))
+    xs = collect(1:nshow)
 
     open(path, "w") do io
         print(io, svg_header(width, height))
-        println(io, """<text class="title" x="450" y="32" text-anchor="middle">2D Ising heat-bath Monte Carlo time series</text>""")
+        println(io, """<text class="title" x="450" y="32" text-anchor="middle">2D Ising heat-bath Monte Carlo time series (first $nshow measurements)</text>""")
 
         panels = [
-            (top=70, values=measurements.energies, ylabel="energy per spin", color="#20639b"),
-            (top=315, values=measurements.abs_magnetizations, ylabel="|m|", color="#b23a48"),
+            (top=70, values=measurements.energies[1:nshow], ylabel="energy per spin", color="#20639b"),
+            (top=315, values=measurements.abs_magnetizations[1:nshow], ylabel="|m|", color="#b23a48"),
         ]
 
         for panel in panels
@@ -146,9 +147,15 @@ function write_autocorrelation_svg(path, analysis)
         println(io, """<line x1="$left" y1="$(round(zero_y; digits=2))" x2="$(left + plot_width)" y2="$(round(zero_y; digits=2))" stroke="#888" stroke-dasharray="5,5"/>""")
         d = path_points(xs, ys, 0.0, Float64(max_lag), ymin, ymax, left, top, plot_width, plot_height)
         println(io, """<path d="$d" fill="none" stroke="#20639b" stroke-width="2"/>""")
-        tau = round(analysis.autocorrelation.abs_magnetization.tau_int; digits=3)
-        window = analysis.autocorrelation.abs_magnetization.window
-        println(io, """<text class="label" x="105" y="93">tau_int = $tau, window = $window</text>""")
+        tau_result = analysis.autocorrelation.abs_magnetization
+        tau = round(tau_result.tau_int; digits=2)
+        tau_err = round(tau_result.error; digits=2)
+        window = tau_result.window
+        if window <= max_lag
+            wx = sx(window, 0.0, Float64(max_lag), left, plot_width)
+            println(io, """<line x1="$(round(wx; digits=2))" y1="$top" x2="$(round(wx; digits=2))" y2="$(top + plot_height)" stroke="#b23a48" stroke-dasharray="5,5"/>""")
+        end
+        println(io, """<text class="label" x="$(left + plot_width - 10)" y="93" text-anchor="end">tau_int = $tau +/- $tau_err, automatic window W = $window</text>""")
         print(io, svg_footer())
     end
 end
@@ -260,40 +267,26 @@ function write_block_jackknife_samples_svg(path)
 end
 
 function block_mean_scan(measurements, chosen_block_size)
-    data = measurements.abs_magnetizations
-    nsamples = length(data)
-    candidate_blocks = unique(vcat(2:2:20, 24:4:80, 90:10:160, [chosen_block_size]))
-    block_sizes = Int[]
-    block_counts = Int[]
-    values = Float64[]
-    errors = Float64[]
-
-    for block_size in sort(candidate_blocks)
-        block_size >= 2 || continue
-        block_size <= div(nsamples, 2) || continue
-        remainder = nsamples % block_size
-        nblock = div(nsamples - remainder, block_size)
-        nblock >= 5 || continue
-        value, error = jk_meanerror(data; block=block_size)
-        push!(block_sizes, block_size)
-        push!(block_counts, nblock)
-        push!(values, value)
-        push!(errors, error)
-    end
-
-    return (block_sizes=block_sizes, block_counts=block_counts, values=values, errors=errors)
+    nsamples = length(measurements.abs_magnetizations)
+    candidate_blocks = unique(vcat(1:2:19, 20:5:95, 100:25:475, 500:100:2000, [chosen_block_size]))
+    blocks = filter(b -> div(nsamples, b) >= 20, sort(candidate_blocks))
+    scan = jk_block_scan(measurements.abs_magnetizations; blocks=blocks)
+    return (block_sizes=scan.block_sizes, block_counts=scan.nblocks, values=scan.values, errors=scan.errors)
 end
 
 function write_block_mean_scan_svg(path, measurements, analysis)
     width = 860
     height = 520
-    scan = block_mean_scan(measurements, analysis.block_size)
-    order = sortperm(scan.block_counts)
-    block_counts = scan.block_counts[order]
-    values = scan.values[order]
-    errors = scan.errors[order]
-    block_sizes = scan.block_sizes[order]
-    xmin, xmax = data_range(block_counts)
+    full_scan = block_mean_scan(measurements, analysis.block_size)
+    keep = findall(>=(20), full_scan.block_sizes)
+    order = sortperm(full_scan.block_counts[keep])
+    block_counts = full_scan.block_counts[keep][order]
+    values = full_scan.values[keep][order]
+    errors = full_scan.errors[keep][order]
+    block_sizes = full_scan.block_sizes[keep][order]
+    # The horizontal axis is log10(number of blocks).
+    logx = log10.(block_counts)
+    xmin, xmax = log10(block_counts[1]) - 0.05, log10(block_counts[end]) + 0.05
     ymin, ymax = data_range(vcat(values .- errors, values .+ errors))
 
     chosen_index = findfirst(==(analysis.block_size), block_sizes)
@@ -305,12 +298,17 @@ function write_block_mean_scan_svg(path, measurements, analysis)
         print(io, svg_header(width, height))
         println(io, """<text class="title" x="430" y="32" text-anchor="middle">Block Jackknife estimate of |m| versus number of blocks</text>""")
         left, top, plot_width, plot_height = 95, 75, 700, 340
-        draw_axes(io, left, top, plot_width, plot_height, xmin, xmax, ymin, ymax; xlabel="number of blocks", ylabel="|m|")
+        draw_axes(io, left, top, plot_width, plot_height, xmin, xmax, ymin, ymax; xlabel="number of blocks (log scale)", ylabel="|m|", draw_x_tick_labels=false)
+        for tick in (20, 50, 100, 200, 500, 1000, 2000)
+            xmin <= log10(tick) <= xmax || continue
+            tx = sx(log10(tick), xmin, xmax, left, plot_width)
+            println(io, """<text class="tick" x="$(round(tx; digits=2))" y="$(top + plot_height + 18)" text-anchor="middle">$tick</text>""")
+        end
 
-        d = path_points(block_counts, values, xmin, xmax, ymin, ymax, left, top, plot_width, plot_height)
+        d = path_points(logx, values, xmin, xmax, ymin, ymax, left, top, plot_width, plot_height)
         println(io, """<path d="$d" fill="none" stroke="#20639b" stroke-width="2"/>""")
         for (nblock, value, error) in zip(block_counts, values, errors)
-            cx = sx(nblock, xmin, xmax, left, plot_width)
+            cx = sx(log10(nblock), xmin, xmax, left, plot_width)
             cy = sy(value, ymin, ymax, top, plot_height)
             y_low = sy(value - error, ymin, ymax, top, plot_height)
             y_high = sy(value + error, ymin, ymax, top, plot_height)
@@ -321,7 +319,7 @@ function write_block_mean_scan_svg(path, measurements, analysis)
         end
 
         if chosen_index !== nothing
-            cx = sx(chosen_nblock, xmin, xmax, left, plot_width)
+            cx = sx(log10(chosen_nblock), xmin, xmax, left, plot_width)
             cy = sy(chosen_value, ymin, ymax, top, plot_height)
             println(io, """<line x1="$(round(cx; digits=2))" y1="$top" x2="$(round(cx; digits=2))" y2="$(top + plot_height)" stroke="#b23a48" stroke-dasharray="5,5"/>""")
             println(io, """<circle cx="$(round(cx; digits=2))" cy="$(round(cy; digits=2))" r="5" fill="#b23a48"/>""")
@@ -333,16 +331,54 @@ function write_block_mean_scan_svg(path, measurements, analysis)
     end
 end
 
+function write_block_error_scan_svg(path, measurements, analysis)
+    width = 860
+    height = 520
+    scan = block_mean_scan(measurements, analysis.block_size)
+    base_error = jk_meanerror(measurements.abs_magnetizations)[2]
+    ratios = scan.errors ./ base_error
+    tau = analysis.autocorrelation.abs_magnetization.tau_int
+    plateau = sqrt(2 * tau)
+    xs = Float64.(scan.block_sizes)
+    xmin, xmax = 0.0, maximum(xs)
+    ymin, ymax = 0.0, 1.15 * max(maximum(ratios), plateau)
+
+    open(path, "w") do io
+        print(io, svg_header(width, height))
+        println(io, """<text class="title" x="430" y="32" text-anchor="middle">Block Jackknife error of &lt;|m|&gt; versus block size</text>""")
+        left, top, plot_width, plot_height = 95, 75, 700, 340
+        draw_axes(io, left, top, plot_width, plot_height, xmin, xmax, ymin, ymax; xlabel="block size b (measurements)", ylabel="error(b) / error(b = 1)")
+
+        py = sy(plateau, ymin, ymax, top, plot_height)
+        println(io, """<line x1="$left" y1="$(round(py; digits=2))" x2="$(left + plot_width)" y2="$(round(py; digits=2))" stroke="#b23a48" stroke-dasharray="6,5"/>""")
+        println(io, """<text class="label" x="$(left + plot_width - 8)" y="$(round(py - 8; digits=2))" text-anchor="end" fill="#b23a48">sqrt(2 tau_int) = $(round(plateau; digits=2))</text>""")
+
+        d = path_points(xs, ratios, xmin, xmax, ymin, ymax, left, top, plot_width, plot_height)
+        println(io, """<path d="$d" fill="none" stroke="#20639b" stroke-width="2"/>""")
+        for (x, r) in zip(xs, ratios)
+            println(io, """<circle cx="$(round(sx(x, xmin, xmax, left, plot_width); digits=2))" cy="$(round(sy(r, ymin, ymax, top, plot_height); digits=2))" r="3" fill="#20639b"/>""")
+        end
+
+        bx = sx(analysis.block_size, xmin, xmax, left, plot_width)
+        println(io, """<line x1="$(round(bx; digits=2))" y1="$top" x2="$(round(bx; digits=2))" y2="$(top + plot_height)" stroke="#555" stroke-dasharray="3,4"/>""")
+        println(io, """<text class="label" x="$(round(bx + 6; digits=2))" y="$(top + plot_height - 10)">chosen b = $(analysis.block_size)</text>""")
+
+        println(io, """<text class="tick" x="430" y="470" text-anchor="middle">The ratio grows with b and levels off near sqrt(2 tau_int) once b is much larger than tau_int.</text>""")
+        print(io, svg_footer())
+    end
+end
+
 function write_error_comparison_svg(path, analysis)
     width = 860
     height = 500
-    labels = ["energy", "|m|", "chi", "C", "Binder"]
+    labels = ["energy", "|m|", "chi'", "C", "Binder", "chi(m)"]
     ordinary = [
         analysis.primary.energy[2],
         analysis.primary.abs_magnetization[2],
         analysis.secondary.susceptibility[2],
         analysis.secondary.specific_heat[2],
         analysis.secondary.binder_ratio[2],
+        analysis.secondary.susceptibility_signed[2],
     ]
     block = [
         analysis.block.energy[2],
@@ -350,6 +386,7 @@ function write_error_comparison_svg(path, analysis)
         analysis.block.susceptibility[2],
         analysis.block.specific_heat[2],
         analysis.block.binder_ratio[2],
+        analysis.block.susceptibility_signed[2],
     ]
     ratios = block ./ ordinary
     ymin = 0.0
@@ -396,6 +433,7 @@ function main()
     write_block_mean_scan_svg(joinpath(FIGURE_DIR, "block_jackknife_mean_vs_nblocks.svg"), measurements, analysis)
     write_histogram_svg(joinpath(FIGURE_DIR, "ising2d_histogram_abs_m.svg"), analysis.histogram)
     write_error_comparison_svg(joinpath(FIGURE_DIR, "ising2d_error_ratio.svg"), analysis)
+    write_block_error_scan_svg(joinpath(FIGURE_DIR, "ising2d_block_error_scan.svg"), measurements, analysis)
 
     println("Wrote tutorial artifacts to:")
     println("  ", RESULT_DIR)

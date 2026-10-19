@@ -1,35 +1,45 @@
 2D Ising Jackknife tutorial
 L = 16, beta = 0.44
 update = heat bath
-measurements = 800, measure_every = 5
+measurements = 40000, measure_every = 5
 
 Ordinary Jackknife: primary observables
-energy per spin                  -1.4415625 +/- 0.00599147
-abs magnetization per spin       0.70786133 +/- 0.00672452
+energy per spin                  -1.44741016 +/- 0.00087153
+abs magnetization per spin       0.70797871 +/- 0.00096739
 
 Ordinary Jackknife: secondary observables
-susceptibility                   4.76521108 +/- 0.439192
-specific heat                    1.42153704 +/- 0.0716418
-Binder ratio                     1.16003095 +/- 0.01108673
+susceptibility chi'              4.2164426 +/- 0.04220284
+chi from signed m                60.5223882 +/- 0.12940028
+specific heat                    1.50575821 +/- 0.00986434
+Binder ratio                     1.17235903 +/- 0.00162543
 
-Integrated autocorrelation time of |m|: 9.016 measurement intervals (window = 22)
-Using block_size = 19
+Integrated autocorrelation time (automatic window, c = 6)
+tau_int of |m|                   11.132 +/- 0.915 measurement intervals (window = 67)
+tau_int of energy                5.72 +/- 0.341 measurement intervals (window = 35)
+tau_int of signed m              343.063 +/- 155.688 measurement intervals (window = 2059)
+Using block_size = 223 (20 tau_int of |m| and energy)
 
 Block Jackknife
-energy per spin                  -1.44122024 +/- 0.01581994
-abs magnetization per spin       0.70750117 +/- 0.02269484
-susceptibility                   4.7692254 +/- 1.37628011
-specific heat                    1.41974489 +/- 0.13365451
-Binder ratio                     1.16024041 +/- 0.03712636
+energy per spin                  -1.44744642 +/- 0.00281301
+abs magnetization per spin       0.70791717 +/- 0.0043698
+susceptibility chi'              4.22283832 +/- 0.18501302
+chi from signed m                60.53082849 +/- 0.68955279
+specific heat                    1.50707088 +/- 0.02219401
+Binder ratio                     1.17259567 +/- 0.0075044
+
+Two correlated series: d<|m|>/d beta = -N_spin (<|m| e> - <|m|><e>)
+block Jackknife                  7.07123106 +/- 0.20215812
+error if treated as independent  2.57712617
+correlation of <|m|> and <e>     -0.9618
 
 Histogram of |m| with block Jackknife error bars
 center         density        error
-0.04817708     0.21731749     0.10578113
-0.12890625     0.20179481     0.10994915
-0.20963542     0.18627213     0.08686748
-0.29036458     0.23284016     0.09379628
-0.37109375     0.18627213     0.07464125
-0.45182292     0.37254426     0.1021636
-0.53255208     0.60538443     0.11414517
-0.61328125     1.27285957     0.1776817
+0.04101562     0.16766218     0.01846982
+0.12304688     0.16155427     0.01691789
+0.20507812     0.21133376     0.01749872
+0.28710938     0.24156792     0.01654776
+0.36914062     0.32188696     0.01867829
+0.45117188     0.44312902     0.0195402
+0.53320312     0.73050628     0.02437621
+0.61523438     1.05208784     0.02599211
 ...

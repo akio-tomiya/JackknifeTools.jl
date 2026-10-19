@@ -19,29 +19,32 @@
 <line class="grid" x1="95" y1="405.0" x2="795" y2="405.0"/>
 <text class="tick" x="87" y="409.0" text-anchor="end">0.0</text>
 <line class="grid" x1="95" y1="322.5" x2="795" y2="322.5"/>
-<text class="tick" x="87" y="326.5" text-anchor="end">0.97</text>
+<text class="tick" x="87" y="326.5" text-anchor="end">1.532</text>
 <line class="grid" x1="95" y1="240.0" x2="795" y2="240.0"/>
-<text class="tick" x="87" y="244.0" text-anchor="end">1.941</text>
+<text class="tick" x="87" y="244.0" text-anchor="end">3.064</text>
 <line class="grid" x1="95" y1="157.5" x2="795" y2="157.5"/>
-<text class="tick" x="87" y="161.5" text-anchor="end">2.911</text>
+<text class="tick" x="87" y="161.5" text-anchor="end">4.596</text>
 <line class="grid" x1="95" y1="75.0" x2="795" y2="75.0"/>
-<text class="tick" x="87" y="79.0" text-anchor="end">3.881</text>
+<text class="tick" x="87" y="79.0" text-anchor="end">6.128</text>
 <text class="label" x="445.0" y="447" text-anchor="middle">observable</text>
 <text class="label" transform="translate(43, 240.0) rotate(-90)" text-anchor="middle">error ratio</text>
-<line x1="95" y1="319.97" x2="795" y2="319.97" stroke="#555" stroke-dasharray="5,5"/>
-<rect x="131.4" y="180.5" width="67.2" height="224.5" fill="#b23a48" opacity="0.78"/>
-<text class="tick" x="165.0" y="427" text-anchor="middle">energy</text>
-<text class="tick" x="165.0" y="172.5" text-anchor="middle">2.64</text>
-<rect x="271.4" y="118.04" width="67.2" height="286.96" fill="#b23a48" opacity="0.78"/>
-<text class="tick" x="305.0" y="427" text-anchor="middle">|m|</text>
-<text class="tick" x="305.0" y="110.04" text-anchor="middle">3.37</text>
-<rect x="411.4" y="138.56" width="67.2" height="266.44" fill="#b23a48" opacity="0.78"/>
-<text class="tick" x="445.0" y="427" text-anchor="middle">chi</text>
-<text class="tick" x="445.0" y="130.56" text-anchor="middle">3.13</text>
-<rect x="551.4" y="246.38" width="67.2" height="158.62" fill="#b23a48" opacity="0.78"/>
-<text class="tick" x="585.0" y="427" text-anchor="middle">C</text>
-<text class="tick" x="585.0" y="238.38" text-anchor="middle">1.87</text>
-<rect x="691.4" y="120.27" width="67.2" height="284.73" fill="#b23a48" opacity="0.78"/>
-<text class="tick" x="725.0" y="427" text-anchor="middle">Binder</text>
-<text class="tick" x="725.0" y="112.27" text-anchor="middle">3.35</text>
+<line x1="95" y1="351.15" x2="795" y2="351.15" stroke="#555" stroke-dasharray="5,5"/>
+<rect x="125.33" y="231.19" width="56.0" height="173.81" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="153.33" y="427" text-anchor="middle">energy</text>
+<text class="tick" x="153.33" y="223.19" text-anchor="middle">3.23</text>
+<rect x="242.0" y="161.76" width="56.0" height="243.24" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="270.0" y="427" text-anchor="middle">|m|</text>
+<text class="tick" x="270.0" y="153.76" text-anchor="middle">4.52</text>
+<rect x="358.67" y="168.93" width="56.0" height="236.07" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="386.67" y="427" text-anchor="middle">chi'</text>
+<text class="tick" x="386.67" y="160.93" text-anchor="middle">4.38</text>
+<rect x="475.33" y="283.84" width="56.0" height="121.16" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="503.33" y="427" text-anchor="middle">C</text>
+<text class="tick" x="503.33" y="275.84" text-anchor="middle">2.25</text>
+<rect x="592.0" y="156.38" width="56.0" height="248.62" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="620.0" y="427" text-anchor="middle">Binder</text>
+<text class="tick" x="620.0" y="148.38" text-anchor="middle">4.62</text>
+<rect x="708.67" y="118.04" width="56.0" height="286.96" fill="#b23a48" opacity="0.78"/>
+<text class="tick" x="736.67" y="427" text-anchor="middle">chi(m)</text>
+<text class="tick" x="736.67" y="110.04" text-anchor="middle">5.33</text>
 </svg>

@@ -1,9 +1,9 @@
 module Ising2DTutorial
 
-using JkTools
+using JackknifeTools
 using Statistics
 
-export analyze_measurements, integrated_autocorrelation_time, main, run_ising2d, write_summary
+export analyze_measurements, integrated_autocorrelation_time, main, run_ising2d, suggested_block_size, write_summary
 
 mutable struct XorShift64Star
     state::UInt64
@@ -87,7 +87,7 @@ function run_ising2d(;
     L::Integer=16,
     beta::Real=0.44,
     therm_sweeps::Integer=500,
-    sweeps::Integer=4000,
+    sweeps::Integer=200000,
     measure_every::Integer=5,
     seed::Integer=20260515,
 )
@@ -133,47 +133,18 @@ function run_ising2d(;
     )
 end
 
-function autocorrelation(series::AbstractVector{<:Real}, max_lag::Integer)
-    n = length(series)
-    n >= 2 || throw(ArgumentError("autocorrelation requires at least two samples"))
-    0 <= max_lag <= n - 1 || throw(ArgumentError("max_lag must satisfy 0 <= max_lag <= length(series) - 1"))
-
-    centered = Float64.(series) .- mean(series)
-    variance = mean(x -> x^2, centered)
-    result = zeros(Float64, max_lag + 1)
-    result[1] = 1.0
-    variance == 0 && return result
-
-    for lag in 1:max_lag
-        total = 0.0
-        for i in 1:n-lag
-            total += centered[i] * centered[i + lag]
-        end
-        result[lag + 1] = total / ((n - lag) * variance)
-    end
-
-    return result
+function integrated_autocorrelation_time(series::AbstractVector{<:Real}; kwargs...)
+    return jk_tau_int(series; kwargs...)
 end
 
-function integrated_autocorrelation_time(series::AbstractVector{<:Real}; max_lag::Integer=min(length(series) - 1, 100))
-    rho = autocorrelation(series, max_lag)
-    tau_int = 0.5
-    window = 0
-
-    for lag in 1:max_lag
-        rho_lag = rho[lag + 1]
-        rho_lag <= 0 && break
-        tau_int += rho_lag
-        window = lag
-    end
-
-    return (tau_int=tau_int, window=window, rho=rho)
-end
-
+# The block Jackknife error of a mean is biased low by a relative amount of
+# order tau_int / b, so the block size should be many times tau_int. The
+# default takes 20 tau_int and keeps at least 50 blocks. Check the choice with
+# jk_block_scan.
 function suggested_block_size(tau_int::Real, nsamples::Integer)
     nsamples >= 2 || throw(ArgumentError("at least two samples are required"))
-    max_block_size = max(1, div(nsamples, 2))
-    return min(max(2, ceil(Int, 2 * tau_int)), max_block_size)
+    max_block_size = max(1, div(nsamples, 50))
+    return min(max(2, ceil(Int, 20 * tau_int)), max_block_size)
 end
 
 function analyze_measurements(measurements; block_size=nothing, hist_bins::Integer=12)
@@ -183,13 +154,33 @@ function analyze_measurements(measurements; block_size=nothing, hist_bins::Integ
     nspins = measurements.L^2
     beta = measurements.beta
 
-    tau_abs_m = integrated_autocorrelation_time(abs_magnetizations)
+    tau_abs_m = jk_tau_int(abs_magnetizations)
+    tau_energy = jk_tau_int(energies)
+    tau_m = jk_tau_int(magnetizations)
     chosen_block_size = block_size === nothing ?
-        suggested_block_size(tau_abs_m.tau_int, length(abs_magnetizations)) :
+        suggested_block_size(max(tau_abs_m.tau_int, tau_energy.tau_int), length(abs_magnetizations)) :
         block_size
 
+    # chi' = N beta (<m^2> - <|m|>^2) uses |m|. The signed version
+    # N beta (<m^2> - <m>^2) depends on rare sign flips of m; it is kept only
+    # to show that problem.
     susceptibility = x -> nspins * beta * var(x, corrected=false)
     specific_heat = x -> nspins * beta^2 * var(x, corrected=false)
+
+    # d<|m|>/d beta = -N_spin (<|m| e> - <|m|><e>), built from two series
+    # measured on the same configurations.
+    dabsm_dbeta = (m, e) -> -nspins * (mean(m .* e) - mean(m) * mean(e))
+
+    # The same quantity with the three averages treated as independent. This
+    # ignores the correlations and is shown only for comparison.
+    me = abs_magnetizations .* energies
+    me_err = jk_meanerror(me; block=chosen_block_size)[2]
+    m_err = jk_meanerror(abs_magnetizations; block=chosen_block_size)[2]
+    e_err = jk_meanerror(energies; block=chosen_block_size)[2]
+    naive_dabsm_dbeta_error = nspins * sqrt(me_err^2 + (mean(energies) * m_err)^2 + (mean(abs_magnetizations) * e_err)^2)
+
+    two_means = (m, e) -> [mean(m), mean(e)]
+    means_central, means_cov = jk_meancov(two_means, abs_magnetizations, energies; block=chosen_block_size)
 
     return (
         primary=(
@@ -197,20 +188,31 @@ function analyze_measurements(measurements; block_size=nothing, hist_bins::Integ
             abs_magnetization=jk_meanerror(abs_magnetizations),
         ),
         secondary=(
-            susceptibility=jk_meanerror(magnetizations, susceptibility),
+            susceptibility=jk_meanerror(abs_magnetizations, susceptibility),
+            susceptibility_signed=jk_meanerror(magnetizations, susceptibility),
             specific_heat=jk_meanerror(energies, specific_heat),
             binder_ratio=jk_meanerror(magnetizations, "binder"),
         ),
         autocorrelation=(
             abs_magnetization=tau_abs_m,
+            energy=tau_energy,
+            magnetization=tau_m,
         ),
         block_size=chosen_block_size,
         block=(
             energy=jk_meanerror(energies; block=chosen_block_size),
             abs_magnetization=jk_meanerror(abs_magnetizations; block=chosen_block_size),
-            susceptibility=jk_meanerror(magnetizations, susceptibility; block=chosen_block_size),
+            susceptibility=jk_meanerror(abs_magnetizations, susceptibility; block=chosen_block_size),
+            susceptibility_signed=jk_meanerror(magnetizations, susceptibility; block=chosen_block_size),
             specific_heat=jk_meanerror(energies, specific_heat; block=chosen_block_size),
             binder_ratio=jk_meanerror(magnetizations, "binder"; block=chosen_block_size),
+        ),
+        multi=(
+            dabsm_dbeta=jk_meanerror(dabsm_dbeta, abs_magnetizations, energies; block=chosen_block_size),
+            naive_dabsm_dbeta_error=naive_dabsm_dbeta_error,
+            means=means_central,
+            means_cov=means_cov,
+            correlation=means_cov[1, 2] / sqrt(means_cov[1, 1] * means_cov[2, 2]),
         ),
         histogram=jk_hist(abs_magnetizations; bins=hist_bins, block=chosen_block_size, density=true),
     )
@@ -254,22 +256,37 @@ function write_summary(io::IO, measurements, analysis)
     println(io)
 
     println(io, "Ordinary Jackknife: secondary observables")
-    print_estimate(io, "susceptibility", analysis.secondary.susceptibility)
+    print_estimate(io, "susceptibility chi'", analysis.secondary.susceptibility)
+    print_estimate(io, "chi from signed m", analysis.secondary.susceptibility_signed)
     print_estimate(io, "specific heat", analysis.secondary.specific_heat)
     print_estimate(io, "Binder ratio", analysis.secondary.binder_ratio)
     println(io)
 
-    tau = analysis.autocorrelation.abs_magnetization
-    println(io, "Integrated autocorrelation time of |m|: ", fmt(tau.tau_int; digits=3), " measurement intervals (window = ", tau.window, ")")
-    println(io, "Using block_size = $(analysis.block_size)")
+    println(io, "Integrated autocorrelation time (automatic window, c = 6)")
+    for (label, tau) in (
+        ("|m|", analysis.autocorrelation.abs_magnetization),
+        ("energy", analysis.autocorrelation.energy),
+        ("signed m", analysis.autocorrelation.magnetization),
+    )
+        println(io, rpad("tau_int of $label", 32), " ", fmt(tau.tau_int; digits=3), " +/- ", fmt(tau.error; digits=3),
+            " measurement intervals (window = ", tau.window, ")")
+    end
+    println(io, "Using block_size = $(analysis.block_size) (20 tau_int of |m| and energy)")
     println(io)
 
     println(io, "Block Jackknife")
     print_estimate(io, "energy per spin", analysis.block.energy)
     print_estimate(io, "abs magnetization per spin", analysis.block.abs_magnetization)
-    print_estimate(io, "susceptibility", analysis.block.susceptibility)
+    print_estimate(io, "susceptibility chi'", analysis.block.susceptibility)
+    print_estimate(io, "chi from signed m", analysis.block.susceptibility_signed)
     print_estimate(io, "specific heat", analysis.block.specific_heat)
     print_estimate(io, "Binder ratio", analysis.block.binder_ratio)
+    println(io)
+
+    println(io, "Two correlated series: d<|m|>/d beta = -N_spin (<|m| e> - <|m|><e>)")
+    print_estimate(io, "block Jackknife", analysis.multi.dabsm_dbeta)
+    println(io, rpad("error if treated as independent", 32), " ", fmt(analysis.multi.naive_dabsm_dbeta_error))
+    println(io, rpad("correlation of <|m|> and <e>", 32), " ", fmt(analysis.multi.correlation; digits=4))
     println(io)
 
     println(io, "Histogram of |m| with block Jackknife error bars")

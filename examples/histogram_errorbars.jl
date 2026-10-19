@@ -1,4 +1,4 @@
-using JkTools
+using JackknifeTools
 using Plots
 using Random
 
