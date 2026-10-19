@@ -3,8 +3,8 @@
   <style>
     text { font-family: Arial, Helvetica, sans-serif; fill: #222; }
     .title { font-size: 20px; font-weight: bold; }
-    .label { font-size: 13px; }
-    .tick { font-size: 11px; fill: #555; }
+    .label { font-size: 15px; }
+    .tick { font-size: 13px; fill: #555; }
     .axis { stroke: #222; stroke-width: 1.2; }
     .grid { stroke: #ddd; stroke-width: 1; }
   </style>
@@ -12,27 +12,27 @@
 <line class="axis" x1="85" y1="400" x2="705" y2="400"/>
 <line class="axis" x1="85" y1="70" x2="85" y2="400"/>
 <line class="grid" x1="85.0" y1="70" x2="85.0" y2="400"/>
-<text class="tick" x="85.0" y="418" text-anchor="middle">0.0</text>
+<text class="tick" x="85.0" y="420" text-anchor="middle">0</text>
 <line class="grid" x1="240.0" y1="70" x2="240.0" y2="400"/>
-<text class="tick" x="240.0" y="418" text-anchor="middle">20.0</text>
+<text class="tick" x="240.0" y="420" text-anchor="middle">20</text>
 <line class="grid" x1="395.0" y1="70" x2="395.0" y2="400"/>
-<text class="tick" x="395.0" y="418" text-anchor="middle">40.0</text>
+<text class="tick" x="395.0" y="420" text-anchor="middle">40</text>
 <line class="grid" x1="550.0" y1="70" x2="550.0" y2="400"/>
-<text class="tick" x="550.0" y="418" text-anchor="middle">60.0</text>
+<text class="tick" x="550.0" y="420" text-anchor="middle">60</text>
 <line class="grid" x1="705.0" y1="70" x2="705.0" y2="400"/>
-<text class="tick" x="705.0" y="418" text-anchor="middle">80.0</text>
-<line class="grid" x1="85" y1="400.0" x2="705" y2="400.0"/>
-<text class="tick" x="77" y="404.0" text-anchor="end">-0.105</text>
-<line class="grid" x1="85" y1="317.5" x2="705" y2="317.5"/>
-<text class="tick" x="77" y="321.5" text-anchor="end">0.192</text>
-<line class="grid" x1="85" y1="235.0" x2="705" y2="235.0"/>
-<text class="tick" x="77" y="239.0" text-anchor="end">0.489</text>
-<line class="grid" x1="85" y1="152.5" x2="705" y2="152.5"/>
-<text class="tick" x="77" y="156.5" text-anchor="end">0.785</text>
-<line class="grid" x1="85" y1="70.0" x2="705" y2="70.0"/>
-<text class="tick" x="77" y="74.0" text-anchor="end">1.082</text>
-<text class="label" x="395.0" y="442" text-anchor="middle">lag</text>
-<text class="label" transform="translate(33, 235.0) rotate(-90)" text-anchor="middle">rho(t)</text>
+<text class="tick" x="705.0" y="420" text-anchor="middle">80</text>
+<line class="grid" x1="85" y1="370.9" x2="705" y2="370.9"/>
+<text class="tick" x="77" y="374.9" text-anchor="end">0.0</text>
+<line class="grid" x1="85" y1="301.37" x2="705" y2="301.37"/>
+<text class="tick" x="77" y="305.37" text-anchor="end">0.25</text>
+<line class="grid" x1="85" y1="231.83" x2="705" y2="231.83"/>
+<text class="tick" x="77" y="235.83" text-anchor="end">0.5</text>
+<line class="grid" x1="85" y1="162.29" x2="705" y2="162.29"/>
+<text class="tick" x="77" y="166.29" text-anchor="end">0.75</text>
+<line class="grid" x1="85" y1="92.76" x2="705" y2="92.76"/>
+<text class="tick" x="77" y="96.76" text-anchor="end">1.0</text>
+<text class="label" x="395.0" y="444" text-anchor="middle">lag</text>
+<text class="label" transform="translate(27, 235.0) rotate(-90)" text-anchor="middle">rho(t)</text>
 <line x1="85" y1="370.9" x2="705" y2="370.9" stroke="#888" stroke-dasharray="5,5"/>
 <path d="M 85.0 92.76 L 92.75 123.48 L 100.5 145.31 L 108.25 164.21 L 116.0 180.85 L 123.75 196.05 L 131.5 209.02 L 139.25 221.39 L 147.0 233.05 L 154.75 243.5 L 162.5 253.52 L 170.25 262.66 L 178.0 271.3 L 185.75 279.07 L 193.5 285.91 L 201.25 292.17 L 209.0 298.19 L 216.75 304.29 L 224.5 309.89 L 232.25 314.71 L 240.0 319.02 L 247.75 323.18 L 255.5 327.22 L 263.25 330.76 L 271.0 334.17 L 278.75 336.76 L 286.5 339.41 L 294.25 341.81 L 302.0 343.87 L 309.75 345.52 L 317.5 347.03 L 325.25 348.13 L 333.0 349.22 L 340.75 350.45 L 348.5 351.76 L 356.25 353.33 L 364.0 355.23 L 371.75 356.65 L 379.5 358.03 L 387.25 359.44 L 395.0 361.03 L 402.75 362.42 L 410.5 364.2 L 418.25 365.86 L 426.0 367.16 L 433.75 368.67 L 441.5 369.69 L 449.25 370.55 L 457.0 371.33 L 464.75 372.53 L 472.5 373.62 L 480.25 374.52 L 488.0 374.98 L 495.75 375.39 L 503.5 375.94 L 511.25 376.25 L 519.0 376.7 L 526.75 376.83 L 534.5 376.9 L 542.25 377.24 L 550.0 377.09 L 557.75 376.62 L 565.5 376.03 L 573.25 375.52 L 581.0 375.15 L 588.75 374.6 L 596.5 373.85 L 604.25 372.97 L 612.0 372.62 L 619.75 371.97 L 627.5 371.22 L 635.25 370.74 L 643.0 370.63 L 650.75 371.22 L 658.5 372.0 L 666.25 372.36 L 674.0 373.25 L 681.75 373.35 L 689.5 373.46 L 697.25 373.49 L 705.0 373.37" fill="none" stroke="#20639b" stroke-width="2"/>
 <line x1="604.25" y1="70" x2="604.25" y2="400" stroke="#b23a48" stroke-dasharray="5,5"/>
