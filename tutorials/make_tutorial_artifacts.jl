@@ -22,8 +22,8 @@ function svg_header(width::Integer, height::Integer)
       <style>
         text { font-family: Arial, Helvetica, sans-serif; fill: #222; }
         .title { font-size: 20px; font-weight: bold; }
-        .label { font-size: 13px; }
-        .tick { font-size: 11px; fill: #555; }
+        .label { font-size: 15px; }
+        .tick { font-size: 13px; fill: #555; }
         .axis { stroke: #222; stroke-width: 1.2; }
         .grid { stroke: #ddd; stroke-width: 1; }
       </style>
@@ -67,6 +67,24 @@ function path_points(xs, ys, xmin, xmax, ymin, ymax, left, top, width, height)
     return join(parts, " ")
 end
 
+# Tick positions at round values: steps of 1, 2, 2.5, or 5 times a power of 10.
+function nice_ticks(vmin, vmax; target=5)
+    span = vmax - vmin
+    span > 0 || return [vmin], 1.0
+    raw = span / target
+    magnitude = 10.0^floor(log10(raw))
+    step = magnitude * first(m for m in (1.0, 2.0, 2.5, 5.0, 10.0) if m * magnitude >= raw)
+    first_tick = ceil(vmin / step) * step
+    ticks = collect(first_tick:step:vmax + 1e-9 * span)
+    return ticks, step
+end
+
+function tick_label(value, step)
+    digits = max(0, -floor(Int, log10(step) + 1e-9) + (step / 10.0^floor(log10(step)) == 2.5 ? 1 : 0))
+    abs(value) < 1e-12 * max(1.0, abs(step)) && (value = 0.0)
+    return digits == 0 ? string(round(Int, value)) : string(round(value; digits=digits))
+end
+
 function draw_axes(io, left, top, width, height, xmin, xmax, ymin, ymax; xlabel="", ylabel="", draw_x_tick_labels=true)
     right = left + width
     bottom = top + height
@@ -74,27 +92,27 @@ function draw_axes(io, left, top, width, height, xmin, xmax, ymin, ymax; xlabel=
     println(io, """<line class="axis" x1="$left" y1="$bottom" x2="$right" y2="$bottom"/>""")
     println(io, """<line class="axis" x1="$left" y1="$top" x2="$left" y2="$bottom"/>""")
 
-    for i in 0:4
-        x = left + i * width / 4
-        value = xmin + i * (xmax - xmin) / 4
-        println(io, """<line class="grid" x1="$(round(x; digits=2))" y1="$top" x2="$(round(x; digits=2))" y2="$bottom"/>""")
-        if draw_x_tick_labels
-            println(io, """<text class="tick" x="$(round(x; digits=2))" y="$(bottom + 18)" text-anchor="middle">$(round(value; digits=2))</text>""")
+    if draw_x_tick_labels
+        xticks, xstep = nice_ticks(xmin, xmax)
+        for value in xticks
+            x = sx(value, xmin, xmax, left, width)
+            println(io, """<line class="grid" x1="$(round(x; digits=2))" y1="$top" x2="$(round(x; digits=2))" y2="$bottom"/>""")
+            println(io, """<text class="tick" x="$(round(x; digits=2))" y="$(bottom + 20)" text-anchor="middle">$(tick_label(value, xstep))</text>""")
         end
     end
 
-    for i in 0:4
-        y = bottom - i * height / 4
-        value = ymin + i * (ymax - ymin) / 4
+    yticks, ystep = nice_ticks(ymin, ymax)
+    for value in yticks
+        y = sy(value, ymin, ymax, top, height)
         println(io, """<line class="grid" x1="$left" y1="$(round(y; digits=2))" x2="$right" y2="$(round(y; digits=2))"/>""")
-        println(io, """<text class="tick" x="$(left - 8)" y="$(round(y + 4; digits=2))" text-anchor="end">$(round(value; digits=3))</text>""")
+        println(io, """<text class="tick" x="$(left - 8)" y="$(round(y + 4; digits=2))" text-anchor="end">$(tick_label(value, ystep))</text>""")
     end
 
     if !isempty(xlabel)
-        println(io, """<text class="label" x="$(left + width / 2)" y="$(bottom + 42)" text-anchor="middle">$(svg_escape(xlabel))</text>""")
+        println(io, """<text class="label" x="$(left + width / 2)" y="$(bottom + 44)" text-anchor="middle">$(svg_escape(xlabel))</text>""")
     end
     if !isempty(ylabel)
-        println(io, """<text class="label" transform="translate($(left - 52), $(top + height / 2)) rotate(-90)" text-anchor="middle">$(svg_escape(ylabel))</text>""")
+        println(io, """<text class="label" transform="translate($(left - 58), $(top + height / 2)) rotate(-90)" text-anchor="middle">$(svg_escape(ylabel))</text>""")
     end
 end
 
@@ -182,7 +200,7 @@ end
 
 function write_jackknife_samples_svg(path)
     width = 820
-    height = 420
+    height = 445
     labels = ["x1", "x2", "x3", "x4", "x5"]
 
     open(path, "w") do io
@@ -195,7 +213,7 @@ function write_jackknife_samples_svg(path)
             draw_box_row(io, labels, [i], 92 + i * 52; row_label="sample $i")
         end
 
-        println(io, """<text class="tick" x="410" y="392" text-anchor="middle">The estimator is evaluated on each leave-one-out sample.</text>""")
+        println(io, """<text class="tick" x="410" y="428" text-anchor="middle">The estimator is evaluated on each leave-one-out sample.</text>""")
         print(io, svg_footer())
     end
 end
@@ -326,7 +344,7 @@ function write_block_mean_scan_svg(path, measurements, analysis)
             println(io, """<text class="label" x="$(round(cx + 8; digits=2))" y="$(round(cy - 10; digits=2))">b = $(analysis.block_size), Nblock = $chosen_nblock</text>""")
         end
 
-        println(io, """<text class="tick" x="430" y="470" text-anchor="middle">Each point is a central value; the vertical bars are block Jackknife errors.</text>""")
+        println(io, """<text class="tick" x="430" y="505" text-anchor="middle">Each point is a central value; the vertical bars are block Jackknife errors.</text>""")
         print(io, svg_footer())
     end
 end
@@ -363,7 +381,7 @@ function write_block_error_scan_svg(path, measurements, analysis)
         println(io, """<line x1="$(round(bx; digits=2))" y1="$top" x2="$(round(bx; digits=2))" y2="$(top + plot_height)" stroke="#555" stroke-dasharray="3,4"/>""")
         println(io, """<text class="label" x="$(round(bx + 6; digits=2))" y="$(top + plot_height - 10)">chosen b = $(analysis.block_size)</text>""")
 
-        println(io, """<text class="tick" x="430" y="470" text-anchor="middle">The ratio grows with b and levels off near sqrt(2 tau_int) once b is much larger than tau_int.</text>""")
+        println(io, """<text class="tick" x="430" y="505" text-anchor="middle">The ratio grows with b and levels off near sqrt(2 tau_int) once b is much larger than tau_int.</text>""")
         print(io, svg_footer())
     end
 end
