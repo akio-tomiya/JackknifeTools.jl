@@ -1,6 +1,8 @@
-using JkTools
+using JackknifeTools
 using Statistics
 using Test
+using Random
+using Aqua
 
 include(joinpath(@__DIR__, "..", "tutorials", "ising2d_jackknife.jl"))
 
@@ -44,7 +46,7 @@ function test_result(got, expected)
     @test got[2] ≈ expected[2]
 end
 
-@testset "JkTools.jl" begin
+@testset "JackknifeTools.jl" begin
     @testset "jackknife indices" begin
         @test jk_index_set([1, 2, 3, 4]) == [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
         @test jk_index_set(1:4) == [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
@@ -78,7 +80,7 @@ end
         test_result(jk_meanerror(data, "binder"), binder_expected)
         test_result(jk_meanerror(data, "bin"), binder_expected)
 
-        @test_throws ErrorException jk_meanerror(data, "unknown")
+        @test_throws ArgumentError jk_meanerror(data, "unknown")
     end
 
     @testset "custom statistic" begin
@@ -156,8 +158,8 @@ end
         test_result(jk_block_meanerror(data, 2, "bin"), binder_expected)
         test_result(jk_meanerror(data, "bin"; block=2), binder_expected)
 
-        @test_throws ErrorException jk_block_meanerror(data, 2, "unknown")
-        @test_throws ErrorException jk_meanerror(data, "unknown"; block=2)
+        @test_throws ArgumentError jk_block_meanerror(data, 2, "unknown")
+        @test_throws ArgumentError jk_meanerror(data, "unknown"; block=2)
     end
 
     @testset "block custom statistic" begin
@@ -294,7 +296,7 @@ end
     @testset "english help" begin
         help_text = sprint(jk_help)
 
-        @test occursin("JkTools quick help", help_text)
+        @test occursin("JackknifeTools quick help", help_text)
         @test occursin("Histogram with error bars", help_text)
         @test occursin("block=2", help_text)
         @test occursin("Binder ratio", help_text)
@@ -310,6 +312,8 @@ end
         @test occursin("Short alias", doc_text)
         @test !occursin("日本語", doc_text)
     end
+
+    include("extensions.jl")
 
     @testset "tutorial smoke test" begin
         measurements = Ising2DTutorial.run_ising2d(;
@@ -332,5 +336,51 @@ end
         @test isfinite(analysis.autocorrelation.abs_magnetization.tau_int)
         @test length(analysis.histogram.centers) == 4
         @test length(analysis.histogram.errors) == 4
+        @test isfinite(analysis.secondary.susceptibility_signed[1])
+        @test isfinite(analysis.autocorrelation.magnetization.tau_int)
+        @test isfinite(analysis.multi.dabsm_dbeta[2])
+        @test size(analysis.multi.means_cov) == (2, 2)
+        @test Ising2DTutorial.suggested_block_size(11.132, 40_000) == 223
+        @test Ising2DTutorial.suggested_block_size(11.1, 1_000) == 20
+    end
+
+    @testset "README quick start" begin
+        data = randn(MersenneTwister(20), 10_000)
+        A = 3 .+ data .+ 0.1 .* randn(MersenneTwister(21), 10_000)
+        B = 2 .+ data .+ 0.1 .* randn(MersenneTwister(22), 10_000)
+
+        @test length(jk_meanerror(data)) == 2
+        @test length(jk_meanerror(data; block=50)) == 2
+        @test length(jk_meanerror(data, x -> var(x, corrected=false))) == 2
+        @test length(jk_meanerror(data, "binder"; block=50)) == 2
+        ratio = jk_meanerror(A, B; block=50) do a, b
+            mean(a) / mean(b)
+        end
+        @test ratio[1] ≈ mean(A) / mean(B)
+
+        tau = jk_tau_int(data)
+        @test tau.tau_int < 1
+        scan = jk_block_scan(data; blocks=1:200)
+        @test length(scan.block_sizes) == 200
+
+        C = [exp(-0.3 * t) * (1 + 0.01 * randn(MersenneTwister(c))) for c in 1:40, t in 0:7]
+        meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
+        m, m_err = jk_meanerror(C, meff; block=4)
+        m2, m_cov = jk_meancov(C, meff; block=4)
+        rep = jk_replicas(C, meff; block=4)
+        @test m ≈ m2
+        @test jk_error(rep.replicas) ≈ m_err
+        @test jk_cov(rep.replicas) ≈ m_cov
+
+        eigenvalues_by_config = [
+            [0.002, 0.011, 0.018],
+            [0.004, 0.010, 0.026],
+            [0.001, 0.016, 0.021],
+        ]
+        hist = jk_hist(eigenvalues_by_config; bins=collect(0.0:0.01:0.03))
+        @test hist.values ≈ [1.0, 4 / 3, 2 / 3]
+        volume = 32^3 * 8
+        hist2 = jk_hist(eigenvalues_by_config; bins=20, scale=1 / volume, density=true)
+        @test length(hist2.values) == 20
     end
 end

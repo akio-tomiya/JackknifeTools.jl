@@ -1,68 +1,80 @@
-# JkTools
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-dark.svg">
+    <img alt="JackknifeTools" src="docs/src/assets/logo.svg" width="520">
+  </picture>
+</p>
+
+[![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
 
 **Author**: A. Tomiya
 
 [English manual](README.md)
 
-JkTools は、Jackknife resampling と統計誤差評価のための小さな Julia
-パッケージです。Monte Carlo 測定などで、プライマリな物理量や
-セカンダリな物理量の中心値と Jackknife 誤差を求める用途を想定しています。
+JackknifeTools は、Monte Carlo のデータに Jackknife と block Jackknife で誤差を
+付けるための小さな Julia パッケージです。プライマリな物理量、非線形な
+セカンダリな物理量、相関のある複数の測定列から作る量、ヒストグラムについて、
+中心値と誤差を求めます。自己相関時間の見積もりと、block size の走査もできます。
 
-依存は Julia 標準ライブラリの `Statistics` だけです。
-package のテストは、push と pull request 時に GitHub Actions CI で実行します。
+依存は Julia 標準ライブラリの `Statistics` だけです。メモリはサンプル数 N に
+比例する分しか使わず、平均とヒストグラムは O(N) の時間で計算するので、
+長い Monte Carlo の履歴もそのまま渡せます。
+
+バージョン 1.0 より前は JkTools という名前でした。関数名 (`jk_meanerror`、
+`jk_hist` など) は変わっていません。
 
 ## インストール
 
-Julia の package prompt から:
-
 ```julia
-pkg> add https://github.com/akio-tomiya/JkTools
+pkg> add JackknifeTools
 ```
 
-Julia code から:
+General レジストリへの登録が終わるまでは、GitHub から入れてください。
 
 ```julia
-using Pkg
-Pkg.add(url="https://github.com/akio-tomiya/JkTools")
+pkg> add https://github.com/akio-tomiya/JackknifeTools.jl
 ```
+
+## 使い方の例
+
+```julia
+using JackknifeTools
+using Statistics
+
+data = randn(10_000)
+A = 3 .+ data .+ 0.1 .* randn(10_000)   # 同じサンプルで測った 2 つの列
+B = 2 .+ data .+ 0.1 .* randn(10_000)
+
+jk_meanerror(data)                                  # 平均と Jackknife 誤差
+jk_meanerror(data; block=50)                        # block Jackknife
+jk_meanerror(data, x -> var(x, corrected=false))    # 非線形な量
+jk_meanerror(data, "binder"; block=50)              # 定義済みのキー
+jk_meanerror(A, B; block=50) do a, b                # 相関のある複数の列
+    mean(a) / mean(b)
+end
+```
+
+どの関数も `(中心値, 誤差)` を返します。中心値は全サンプルで計算した値で、
+誤差は Jackknife の replica から計算します。
 
 ## 機能
 
-- 通常の 1 点抜き Jackknife index:
-  - `jk_index(data)`
-  - `jk_index_set(index)`
-- ブロック Jackknife index:
-  - `jk_block_index(data, block_size)`
-  - `jk_block_index_set(index, block_size)`
-- Jackknife 誤差評価:
-  - `jk_meanerror(data)`
-  - `jk_meanerror(data, key)`
-  - `jk_meanerror(data, func)`
-- ブロック Jackknife 誤差評価:
-  - `jk_block_meanerror(data, block_size)`
-  - `jk_block_meanerror(data, block_size, key)`
-  - `jk_block_meanerror(data, block_size, func)`
-- 誤差棒つきヒストグラム用の値:
-  - `jk_histogram(samples, edges)`
-  - `jk_histogram(samples; bins=10)`
-  - `jk_hist(samples; bins=10)`
-  - `jk_block_histogram(samples, edges, block_size)`
-  - `jk_block_histogram(samples, block_size; bins=10)`
-  - `jk_block_hist(samples, block_size; bins=10)`
-- 英語ヘルプ:
-  - `?jk_meanerror`
-  - `?jk_hist`
-  - `jk_help()`
+| 用途 | 関数 |
+| --- | --- |
+| 平均と誤差 | `jk_meanerror(data)`、`jk_meanerror(data, func)`、`jk_meanerror(data, key)` |
+| 相関のある複数の列 | `jk_meanerror(func, A, B, ...)` と do ブロックの形 |
+| ベクトル値の量と共分散 | 配列を返す `func` を渡した `jk_meanerror`、`jk_meancov` |
+| Jackknife の replica | `jk_replicas`、`jk_error`、`jk_cov` |
+| 誤差棒つきヒストグラム | `jk_hist(samples; bins=20)`、`jk_histogram(samples, edges)` |
+| 自己相関 | `jk_autocorr`、`jk_tau_int`、`jk_block_scan` |
+| 添字の組 | `jk_index`、`jk_index_set`、`jk_block_index`、`jk_block_index_set` |
+| 以前からの block 用 API | `jk_block_meanerror`、`jk_block_histogram`、`jk_block_hist` |
+| ヘルプ (英語) | `?jk_meanerror`、`?jk_hist`、`jk_help()` |
 
-通常 API は、`block` keyword を指定するとブロック Jackknife に切り替わります。
+どの関数も `block` キーワードを受け付けます。指定しなければ、1 点抜きの
+通常の Jackknife になります。
 
-```julia
-jk_meanerror(data; block=2)
-jk_meanerror(data, "sus"; block=2)
-jk_hist(eigenvalues_by_config; bins=20, block=2)
-```
-
-使える observable key:
+使えるキー (`String` でも `Symbol` でもよい) は次のとおりです。
 
 ```julia
 "mean", "average"          # mean(x)
@@ -70,105 +82,84 @@ jk_hist(eigenvalues_by_config; bins=20, block=2)
 "binder", "bin"            # Binder ratio: mean(x .^ 4) / mean(x .^ 2)^2
 ```
 
-JkTools では `binder` / `bin` は上の Binder ratio を意味します。
+## データの形
 
-任意関数を渡す場合、その関数は 1 つの sample vector から 1 つの
-スカラー observable を返す必要があります。
+- ベクトルは、1 要素が 1 サンプル (1 配位) です。
+- 行列は、1 行が 1 サンプルです。たとえば相関関数 `C[config, t]` です。
+  `jk_meanerror(C)` は列ごとの平均と誤差を返します。
+- ベクトルのベクトルも使えます。内側のベクトルが 1 サンプル分です。
+- 複素数のデータでは、誤差は `complex(実部の誤差, 虚部の誤差)` になります。
 
-```julia
-x -> mean(x .^ 2)
-x -> var(x, corrected=false)
-```
+`func` には同じ形のサンプルが渡されます。`func` は数、複素数、配列のどれを
+返してもかまいません。配列なら成分ごとに誤差を返します。
 
-## ヘルプ
+## Block Jackknife
 
-Julia の help mode で英語 docstring を確認できます。
-
-```julia
-?jk_meanerror
-?jk_block_meanerror
-?jk_hist
-```
-
-短い概要を表示するには:
+Block Jackknife は、連続した block を 1 つずつ抜きます。Markov chain
+Monte Carlo のように自己相関があるデータに使います。
 
 ```julia
-jk_help()
+jk_meanerror(data; block=50)
+jk_meanerror(data, "sus"; block=50)
 ```
 
-## 基本的な使い方
-
-```julia
-using JkTools
-using Statistics
-
-data = [12.3, 15.6, 14.2, 11.8, 13.7, 16.4, 14.8, 13.1, 12.9, 15.2]
-
-mean_val, mean_err = jk_meanerror(data)
-println("mean = $mean_val +/- $mean_err")
-
-sus_val, sus_err = jk_meanerror(data, "sus")
-println("susceptibility = $sus_val +/- $sus_err")
-
-square_val, square_err = jk_meanerror(data, x -> mean(x .^ 2))
-println("mean(x^2) = $square_val +/- $square_err")
-```
-
-非線形 observable の場合、中心値は全 sample から計算し、誤差は
-leave-one-out の Jackknife sample から計算します。
-
-## Jackknife Index
-
-```julia
-jk_index_set(1:4)
-# [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
-
-jk_index([10.0, 20.0, 30.0])
-# [[2, 3], [1, 3], [1, 2]]
-```
-
-## ブロック Jackknife
-
-ブロック Jackknife は、1 点ずつではなく連続した block を 1 つずつ抜きます。
-Markov-chain Monte Carlo のようにデータに自己相関がある場合に有用です。
-
-```julia
-block_size = 2
-
-block_mean, block_err = jk_meanerror(data; block=block_size)
-println("block mean = $block_mean +/- $block_err")
-
-block_sus, block_sus_err = jk_meanerror(data, "sus"; block=block_size)
-println("block susceptibility = $block_sus +/- $block_sus_err")
-```
-
-これまでの明示的な書き方もそのまま使えます。
-
-```julia
-jk_block_meanerror(data, block_size)
-jk_block_meanerror(data, block_size, "sus")
-```
-
-`length(data)` が `block_size` で割り切れない場合、JkTools は先頭側の
-余りを drop してから同じ大きさの block を作ります。これは、初期の
-データが熱化の影響を受けている可能性がある場合に便利です。
+`length(data)` が block size で割り切れないときは、先頭の余りを捨ててから
+同じ大きさの block に分けます。中心値も replica も、捨てた後のデータで
+計算します。
 
 ```julia
 jk_block_index_set(1:5, 2)
 # [[4, 5], [2, 3]]
 ```
 
-この例では `1` を drop し、残ったデータを `[2, 3]` と `[4, 5]` に
-分けています。
+この例では `1` を捨て、残りを `[2, 3]` と `[4, 5]` に分けています。
+block は少なくとも 2 つ必要です。
 
-先頭の余りを drop したあと、少なくとも 2 つの full block が必要です。
+### block size の選び方
+
+```julia
+tau = jk_tau_int(data)          # Sokal の自動 window、c = 6
+tau.tau_int, tau.error, tau.window
+
+scan = jk_block_scan(data; blocks=1:200)
+scan.block_sizes, scan.nblocks, scan.values, scan.errors
+```
+
+平均の block Jackknife 誤差は、block size とともに増え、block size が
+`tau_int` より十分大きくなると、通常の誤差の `sqrt(2 tau_int)` 倍あたりで
+平坦になります。その平坦な領域で、block 数が十分残る block size を選びます。
+
+## 相関のある複数の列
+
+同じ配位で測った複数の量から作る量は、全ての列を 1 回の呼び出しに渡します。
+どの replica でも全ての列から同じサンプル (または同じ block) を抜くので、
+列どうしの相関が誤差に入ります。
+
+```julia
+ratio, ratio_err = jk_meanerror((a, b) -> mean(a) / mean(b), A, B; block=50)
+```
+
+`mean(A)` と `mean(B)` の誤差を別々に求め、独立とみなして合成すると、
+大きく間違えることがあります。チュートリアルには、誤差を 10 倍以上
+大きく見積もってしまう例があります。
+
+## ベクトル値の量、共分散、replica
+
+```julia
+# 相関関数 C[config, t] から有効質量
+meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
+
+m, m_err = jk_meanerror(C, meff; block=4)
+m, m_cov = jk_meancov(C, meff; block=4)        # 相関のある fit 用の共分散
+
+rep = jk_replicas(C, meff; block=4)            # Jackknife サンプルごとの値
+jk_error(rep.replicas), jk_cov(rep.replicas)
+```
 
 ## 誤差棒つきヒストグラム
 
-`jk_histogram` と `jk_block_histogram` は、中心となるヒストグラムと
-各 bin の Jackknife 誤差を計算します。入力は sample ごとに整理します。
-例えば Dirac eigenvalue の場合、各要素を 1 つの gauge configuration で
-測った eigenvalue の列にできます。
+`samples` の 1 要素が 1 サンプルです。数でもベクトルでもよく、たとえば
+1 つのゲージ配位で測った Dirac 固有値の列を入れます。
 
 ```julia
 eigenvalues_by_config = [
@@ -178,83 +169,47 @@ eigenvalues_by_config = [
 ]
 
 hist = jk_hist(eigenvalues_by_config; bins=collect(0.0:0.01:0.03))
-
-hist.centers  # bin centers
-hist.values   # bin heights
-hist.errors   # Jackknife error for each bin
+hist.edges, hist.centers, hist.values, hist.errors
 ```
 
-Julia の plotting histogram に近く、`bins` には整数も指定できます。
-
-```julia
-hist = jk_hist(eigenvalues_by_config; bins=20)
-```
-
-bin は `[edge[i], edge[i+1])` として扱い、最後の右端だけ含めます。
-範囲外の値は無視します。
-
-密度のように表示したい場合は、`density=true` で bin 幅で割り、
-`scale` で `1 / volume` などの規格化因子を掛けます。
+`bins` は整数でも、bin の端の列でもかまいません。bin は `[edge[i], edge[i+1])`
+で、最後の右端だけは含めます。範囲外の値、`NaN`、`±Inf` は数えません。
+`density=true` で bin 幅で割り、それ以外の規格化は `scale` で掛けます。
 
 ```julia
 volume = 32^3 * 8
 hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
 ```
 
-これまでの明示的な `jk_block_hist(eigenvalues_by_config, 2; bins=20)` も
-そのまま使えます。
-
-JkTools は plotting package に依存しません。Plots.jl を使う場合は、
-例えば次のように描画できます。
+JackknifeTools は描画パッケージに依存しません。Plots.jl なら次のように描けます。
 
 ```julia
 using Plots
-
-edges = hist.edges
-
-bar(
-    hist.centers,
-    hist.values;
-    yerror=hist.errors,
-    bar_width=edges[2] - edges[1],
-    label=false,
-    xlabel="lambda",
-    ylabel="rho(lambda)",
-)
+bar(hist.centers, hist.values; yerror=hist.errors, bar_width=hist.edges[2] - hist.edges[1], label=false)
 ```
 
-例は次にも置いてあります。
-
-```text
-examples/histogram_errorbars.jl
-```
-
-この例では Plots.jl を使い、中心となる書き方は次です。
-
-```julia
-hist = jk_hist(eigenvalues_by_config; bins=bins, block=block_size, density=true)
-bar(hist.centers, hist.values; yerror=hist.errors)
-```
+`examples/histogram_errorbars.jl` も見てください。
 
 ## チュートリアル
 
-`tutorials/` directory に、standalone な 2D Ising model tutorial を置いて
-います。熱浴法、統計誤差、誤差の伝播、通常 Jackknife、secondary
-observable、自己相関関数、自己相関時間、block Jackknife、誤差棒つき
-histogram を一通り試せます。実行結果の log と SVG 図も含めています。
+[`tutorials/README.md`](tutorials/README.md) は、熱浴法で生成した 2 次元 Ising
+模型のデータを使ったチュートリアルです。統計誤差、誤差の伝播、通常の
+Jackknife と block Jackknife、自己相関関数と自己相関時間、block size の選び方、
+相関のある複数の列から作る量、ヒストグラムを、実行結果と図つきで説明して
+います。
 
 ```bash
 julia --project=. tutorials/ising2d_jackknife.jl
 julia --project=. tutorials/make_tutorial_artifacts.jl
 ```
 
-## 入力の検証
+## 入力の検査
 
-通常の Jackknife には少なくとも 2 点のデータが必要です。ブロック
-Jackknife では、正の `block_size` と、先頭の余りを drop したあとの
-少なくとも 2 つの full block が必要です。不正な入力では
+通常の Jackknife にはサンプルが 2 つ以上必要です。Block Jackknife には正の
+整数の block size と、先頭の余りを捨てた後に 2 つ以上の block が必要です。
+複数の列は同じ数のサンプルを持つ必要があります。条件を満たさない入力には
 `ArgumentError` を投げます。
 
 ## ライセンス
 
-このパッケージは MIT License で配布されています。
+MIT License です。

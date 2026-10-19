@@ -1,69 +1,82 @@
-# JkTools
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-dark.svg">
+    <img alt="JackknifeTools" src="docs/src/assets/logo.svg" width="520">
+  </picture>
+</p>
+
+[![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
 
 **Author**: A. Tomiya
 
 [Japanese manual](README.ja.md)
 
-JkTools is a small Julia package for Jackknife resampling and statistical error
-estimation. It is intended for simple analysis workflows such as Monte Carlo
-measurements, where one wants central values and Jackknife errors for primary or
-secondary observables.
+JackknifeTools is a small Julia package for Jackknife and block Jackknife error
+estimates of Monte Carlo data. It gives central values and errors for primary
+observables, for nonlinear secondary observables, for observables built from
+several correlated series, and for histograms. It also estimates
+autocorrelation times and scans block sizes.
 
-The package depends only on Julia's standard `Statistics` library.
-The package test suite is run by GitHub Actions CI on pushes and pull requests.
+The package depends only on Julia's standard `Statistics` library. Memory use
+is O(N) in the number of samples, and the mean and histograms take O(N) time,
+so long Monte Carlo histories are fine.
+
+The package was called JkTools before version 1.0. The function names
+(`jk_meanerror`, `jk_hist`, ...) are unchanged.
 
 ## Installation
 
-From the Julia package prompt:
-
 ```julia
-pkg> add https://github.com/akio-tomiya/JkTools
+pkg> add JackknifeTools
 ```
 
-or from Julia code:
+Until the registration in the General registry is complete, install from
+GitHub:
 
 ```julia
-using Pkg
-Pkg.add(url="https://github.com/akio-tomiya/JkTools")
+pkg> add https://github.com/akio-tomiya/JackknifeTools.jl
 ```
+
+## Quick start
+
+```julia
+using JackknifeTools
+using Statistics
+
+data = randn(10_000)
+A = 3 .+ data .+ 0.1 .* randn(10_000)   # two series measured on the same samples
+B = 2 .+ data .+ 0.1 .* randn(10_000)
+
+jk_meanerror(data)                                  # mean and Jackknife error
+jk_meanerror(data; block=50)                        # block Jackknife
+jk_meanerror(data, x -> var(x, corrected=false))    # nonlinear observable
+jk_meanerror(data, "binder"; block=50)              # predefined key
+jk_meanerror(A, B; block=50) do a, b                # several correlated series
+    mean(a) / mean(b)
+end
+```
+
+Every estimator returns `(central_value, error)`. The central value is the
+statistic of the full sample; the error comes from the Jackknife replicas.
 
 ## Features
 
-- Ordinary leave-one-out Jackknife indices:
-  - `jk_index(data)`
-  - `jk_index_set(index)`
-- Block Jackknife indices:
-  - `jk_block_index(data, block_size)`
-  - `jk_block_index_set(index, block_size)`
-- Jackknife error estimates:
-  - `jk_meanerror(data)`
-  - `jk_meanerror(data, key)`
-  - `jk_meanerror(data, func)`
-- Block Jackknife error estimates:
-  - `jk_block_meanerror(data, block_size)`
-  - `jk_block_meanerror(data, block_size, key)`
-  - `jk_block_meanerror(data, block_size, func)`
-- Histogram estimates with error bars:
-  - `jk_histogram(samples, edges)`
-  - `jk_histogram(samples; bins=10)`
-  - `jk_hist(samples; bins=10)`
-  - `jk_block_histogram(samples, edges, block_size)`
-  - `jk_block_histogram(samples, block_size; bins=10)`
-  - `jk_block_hist(samples, block_size; bins=10)`
-- English help:
-  - `?jk_meanerror`
-  - `?jk_hist`
-  - `jk_help()`
+| Task | Functions |
+| --- | --- |
+| Mean and error | `jk_meanerror(data)`, `jk_meanerror(data, func)`, `jk_meanerror(data, key)` |
+| Several correlated series | `jk_meanerror(func, A, B, ...)` and the do-block form |
+| Vector observables, covariance | `jk_meanerror(data, func)` with array-valued `func`, `jk_meancov` |
+| Jackknife replicas | `jk_replicas`, `jk_error`, `jk_cov` |
+| Histograms with error bars | `jk_hist(samples; bins=20)`, `jk_histogram(samples, edges)` |
+| Autocorrelation | `jk_autocorr`, `jk_tau_int`, `jk_block_scan` |
+| Index sets | `jk_index`, `jk_index_set`, `jk_block_index`, `jk_block_index_set` |
+| Older explicit block API | `jk_block_meanerror`, `jk_block_histogram`, `jk_block_hist` |
+| Help | `?jk_meanerror`, `?jk_hist`, `jk_help()` |
 
-The ordinary APIs can switch to block Jackknife with the `block` keyword:
+Every estimator accepts the `block` keyword. Without it, ordinary
+leave-one-out Jackknife is used.
 
-```julia
-jk_meanerror(data; block=2)
-jk_meanerror(data, "sus"; block=2)
-jk_hist(eigenvalues_by_config; bins=20, block=2)
-```
-
-Supported observable keys are:
+Supported observable keys (`String` or `Symbol`):
 
 ```julia
 "mean", "average"          # mean(x)
@@ -71,104 +84,86 @@ Supported observable keys are:
 "binder", "bin"            # Binder ratio: mean(x .^ 4) / mean(x .^ 2)^2
 ```
 
-In JkTools, `binder` and `bin` mean the Binder ratio shown above.
+## Data layout
 
-Custom functions should map one sample vector to one scalar observable:
+- A vector has one entry per sample (configuration).
+- A matrix has one row per sample, for example a correlator `C[config, t]`.
+  `jk_meanerror(C)` gives the column means and their errors.
+- A vector of vectors also works; each inner vector belongs to one sample.
+- Complex data give the error `complex(error of real part, error of imaginary part)`.
 
-```julia
-x -> mean(x .^ 2)
-x -> var(x, corrected=false)
-```
-
-## Help
-
-Use Julia help mode to read English docstrings:
-
-```julia
-?jk_meanerror
-?jk_block_meanerror
-?jk_hist
-```
-
-For a short overview:
-
-```julia
-jk_help()
-```
-
-## Basic Usage
-
-```julia
-using JkTools
-using Statistics
-
-data = [12.3, 15.6, 14.2, 11.8, 13.7, 16.4, 14.8, 13.1, 12.9, 15.2]
-
-mean_val, mean_err = jk_meanerror(data)
-println("mean = $mean_val +/- $mean_err")
-
-sus_val, sus_err = jk_meanerror(data, "sus")
-println("susceptibility = $sus_val +/- $sus_err")
-
-square_val, square_err = jk_meanerror(data, x -> mean(x .^ 2))
-println("mean(x^2) = $square_val +/- $square_err")
-```
-
-For nonlinear observables, the central value is computed from the full sample,
-while the error is computed from the leave-one-out Jackknife samples.
-
-## Jackknife Indices
-
-```julia
-jk_index_set(1:4)
-# [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
-
-jk_index([10.0, 20.0, 30.0])
-# [[2, 3], [1, 3], [1, 2]]
-```
+`func` receives the samples in the same layout and may return a number, a
+complex number, or an array. Arrays give elementwise errors.
 
 ## Block Jackknife
 
-Block Jackknife removes one contiguous block at a time. This is useful when the
-data have autocorrelation, for example in Markov-chain Monte Carlo measurements.
+Block Jackknife removes one contiguous block at a time. Use it when the data
+are autocorrelated, as in Markov-chain Monte Carlo.
 
 ```julia
-block_size = 2
-
-block_mean, block_err = jk_meanerror(data; block=block_size)
-println("block mean = $block_mean +/- $block_err")
-
-block_sus, block_sus_err = jk_meanerror(data, "sus"; block=block_size)
-println("block susceptibility = $block_sus +/- $block_sus_err")
+jk_meanerror(data; block=50)
+jk_meanerror(data, "sus"; block=50)
 ```
 
-The older explicit form is still supported:
-
-```julia
-jk_block_meanerror(data, block_size)
-jk_block_meanerror(data, block_size, "sus")
-```
-
-If `length(data)` is not divisible by `block_size`, JkTools drops the initial
-remainder before making equal-size blocks. This is useful when the earliest data
-may be affected by thermalization.
+If `length(data)` is not divisible by the block size, JackknifeTools drops the
+initial remainder before making equal-size blocks. The central value and the
+replicas both use the data after the drop.
 
 ```julia
 jk_block_index_set(1:5, 2)
 # [[4, 5], [2, 3]]
 ```
 
-In this example, `1` is dropped, then the kept data are split into `[2, 3]` and
-`[4, 5]`.
+Here `1` is dropped, and the kept data are split into `[2, 3]` and `[4, 5]`.
+At least two full blocks are required.
 
-At least two full blocks are required after the initial remainder is dropped.
+### Choosing the block size
 
-## Histograms With Error Bars
+```julia
+tau = jk_tau_int(data)          # automatic windowing (Sokal), c = 6
+tau.tau_int, tau.error, tau.window
 
-`jk_histogram` and `jk_block_histogram` compute one central histogram and one
-Jackknife error for each bin. The input is organized by sample. For example, for
-Dirac eigenvalues, each element can be the eigenvalues measured on one gauge
-configuration.
+scan = jk_block_scan(data; blocks=1:200)
+scan.block_sizes, scan.nblocks, scan.values, scan.errors
+```
+
+The block Jackknife error of a mean grows with the block size and levels off
+near `sqrt(2 tau_int)` times the ordinary error once the block size is much
+larger than `tau_int`. Pick a block size in that plateau that still leaves
+many blocks.
+
+## Several correlated series
+
+When an observable is built from several quantities measured on the same
+configurations, pass all series to one call. Every replica removes the same
+samples (or the same block) from all series, so their correlations enter the
+error.
+
+```julia
+ratio, ratio_err = jk_meanerror((a, b) -> mean(a) / mean(b), A, B; block=50)
+```
+
+Estimating the errors of `mean(A)` and `mean(B)` separately and combining them
+as independent can be wrong by a large factor. The tutorial shows a case where
+it overestimates the error by more than a factor of 10.
+
+## Vector observables, covariance, and replicas
+
+```julia
+# effective mass from a correlator C[config, t]
+meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
+
+m, m_err = jk_meanerror(C, meff; block=4)
+m, m_cov = jk_meancov(C, meff; block=4)        # covariance for correlated fits
+
+rep = jk_replicas(C, meff; block=4)            # one value per Jackknife sample
+jk_error(rep.replicas), jk_cov(rep.replicas)
+```
+
+## Histograms with error bars
+
+Each element of `samples` is one sample. It may be a number or a vector, for
+example the Dirac eigenvalues measured on one gauge configuration.
 
 ```julia
 eigenvalues_by_config = [
@@ -178,83 +173,48 @@ eigenvalues_by_config = [
 ]
 
 hist = jk_hist(eigenvalues_by_config; bins=collect(0.0:0.01:0.03))
-
-hist.centers  # bin centers
-hist.values   # bin heights
-hist.errors   # Jackknife error for each bin
+hist.edges, hist.centers, hist.values, hist.errors
 ```
 
-Like Julia plotting histogram functions, `bins` may also be an integer:
-
-```julia
-hist = jk_hist(eigenvalues_by_config; bins=20)
-```
-
-Bins use `[edge[i], edge[i+1])`, with the final right edge included. Values
-outside the edges are ignored.
-
-For density-like plots, use `density=true` to divide by bin width, and `scale`
-for any additional normalization factor such as `1 / volume`.
+`bins` may be an integer or a vector of edges. Bins are `[edge[i], edge[i+1])`
+with the last right edge included. Values outside the edges, `NaN`, and
+`±Inf` are ignored. Use `density=true` to divide by the bin width and `scale`
+for any other normalization:
 
 ```julia
 volume = 32^3 * 8
 hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
 ```
 
-The older explicit form `jk_block_hist(eigenvalues_by_config, 2; bins=20)` is
-also still supported.
-
-JkTools does not depend on a plotting package. With Plots.jl, one possible plot
-is:
+JackknifeTools does not depend on a plotting package. With Plots.jl:
 
 ```julia
 using Plots
-
-edges = hist.edges
-
-bar(
-    hist.centers,
-    hist.values;
-    yerror=hist.errors,
-    bar_width=edges[2] - edges[1],
-    label=false,
-    xlabel="lambda",
-    ylabel="rho(lambda)",
-)
+bar(hist.centers, hist.values; yerror=hist.errors, bar_width=hist.edges[2] - hist.edges[1], label=false)
 ```
 
-See also:
+See `examples/histogram_errorbars.jl`.
 
-```text
-examples/histogram_errorbars.jl
-```
+## Tutorial
 
-That example uses Plots.jl and contains the core pattern:
-
-```julia
-hist = jk_hist(eigenvalues_by_config; bins=bins, block=block_size, density=true)
-bar(hist.centers, hist.values; yerror=hist.errors)
-```
-
-## Tutorials
-
-The `tutorials/` directory contains a standalone 2D Ising model tutorial. It
-demonstrates heat-bath updates, statistical errors, error propagation,
-ordinary Jackknife, secondary observables, autocorrelation functions,
-autocorrelation time, block Jackknife, and histograms with error bars. The
-tutorial includes a saved execution log and SVG figures.
+[`tutorials/README.md`](tutorials/README.md) is a Japanese tutorial on the 2D
+Ising model with a heat-bath update. It covers statistical errors, error
+propagation, ordinary and block Jackknife, autocorrelation functions and
+times, the choice of the block size, observables from several correlated
+series, and histograms, with saved output and figures.
 
 ```bash
 julia --project=. tutorials/ising2d_jackknife.jl
 julia --project=. tutorials/make_tutorial_artifacts.jl
 ```
 
-## Input Validation
+## Input validation
 
-Ordinary Jackknife requires at least two data points. Block Jackknife requires a
-positive `block_size` and at least two full blocks after dropping the initial
-remainder. Invalid inputs throw `ArgumentError`.
+Ordinary Jackknife requires at least two samples. Block Jackknife requires a
+positive integer block size and at least two full blocks after dropping the
+initial remainder. Several series must have the same number of samples.
+Invalid inputs throw `ArgumentError`.
 
 ## License
 
-This package is distributed under the MIT License.
+MIT License.
