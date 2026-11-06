@@ -1,4 +1,4 @@
-using JackknifeTools
+using BlockJackknife
 using Plots
 using Random
 

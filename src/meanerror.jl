@@ -109,7 +109,7 @@ Set `block` to an integer to use block Jackknife.
 Supported keys:
 - `"mean"` or `"average"`: `mean(x)`
 - `"sus"` or `"susceptibility"`: `var(x, corrected=false)`
-- `"binder"` or `"bin"`: Binder ratio, defined in JackknifeTools as
+- `"binder"` or `"bin"`: Binder ratio, defined in BlockJackknife as
   `mean(x .^ 4) / mean(x .^ 2)^2`
 
 Unsupported keys throw an `ArgumentError`.
@@ -192,7 +192,7 @@ Calculates a predefined observable and its block Jackknife error.
 Equivalent to `jk_meanerror(input_data, KEY; block=block_size)`.
 
 Uses the same keys as `jk_meanerror`. `"binder"` and `"bin"` mean the Binder
-ratio, defined in JackknifeTools as `mean(x .^ 4) / mean(x .^ 2)^2`.
+ratio, defined in BlockJackknife as `mean(x .^ 4) / mean(x .^ 2)^2`.
 """
 function jk_block_meanerror(input_data::_Data, block_size, KEY::_Key)
     return jk_meanerror(input_data, KEY; block=block_size)

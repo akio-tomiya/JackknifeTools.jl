@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "ising2d_jackknife.jl"))
 
 using .Ising2DTutorial
-using JackknifeTools
+using BlockJackknife
 
 const ROOT = @__DIR__
 const FIGURE_DIR = joinpath(ROOT, "figures")

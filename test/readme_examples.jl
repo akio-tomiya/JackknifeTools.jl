@@ -18,7 +18,7 @@ end
 
     mktempdir() do dir
         script = joinpath(dir, "readme_examples.jl")
-        write(script, "using JackknifeTools\nusing Statistics\n\n" * join(blocks, "\n"))
+        write(script, "using BlockJackknife\nusing Statistics\n\n" * join(blocks, "\n"))
         sandbox = Module(:ReadmeSandbox)
         @test (cd(() -> Base.include(sandbox, script), dir); true)
     end
