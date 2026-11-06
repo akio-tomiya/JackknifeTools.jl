@@ -3,8 +3,8 @@
   <style>
     text { font-family: Arial, Helvetica, sans-serif; fill: #222; }
     .title { font-size: 20px; font-weight: bold; }
-    .label { font-size: 13px; }
-    .tick { font-size: 11px; fill: #555; }
+    .label { font-size: 15px; }
+    .tick { font-size: 13px; fill: #555; }
     .axis { stroke: #222; stroke-width: 1.2; }
     .grid { stroke: #ddd; stroke-width: 1; }
   </style>

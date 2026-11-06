@@ -59,6 +59,30 @@ end
 Every estimator returns `(central_value, error)`. The central value is the
 statistic of the full sample; the error comes from the Jackknife replicas.
 
+## What you get
+
+Figures from the [2D Ising tutorial](tutorials/README.md). The tutorial script
+writes them as plain SVG, without a plotting package.
+
+<p align="center">
+  <img src="tutorials/figures/ising2d_histogram_abs_m.svg" width="49%" alt="Histogram of |m| with block Jackknife error bars">
+  <img src="tutorials/figures/ising2d_block_error_scan.svg" width="49%" alt="Block Jackknife error versus block size">
+</p>
+
+Left: histogram of `|m|` with block Jackknife error bars from `jk_hist`.
+Right: the block Jackknife error of `<|m|>` from `jk_block_scan`, divided by
+the ordinary Jackknife error. It levels off near `sqrt(2 tau_int)`, with
+`tau_int` from `jk_tau_int`, once the block size is much larger than `tau_int`.
+
+<p align="center">
+  <img src="tutorials/figures/ising2d_autocorrelation.svg" width="49%" alt="Autocorrelation function of |m|">
+  <img src="tutorials/figures/block_jackknife_mean_vs_nblocks.svg" width="49%" alt="Block Jackknife estimate versus number of blocks">
+</p>
+
+Left: autocorrelation function from `jk_autocorr` and the automatic window of
+`jk_tau_int`. Right: the central value of `<|m|>` with block Jackknife errors
+for many block sizes; it stays within the error bars.
+
 ## Features
 
 | Task | Functions |

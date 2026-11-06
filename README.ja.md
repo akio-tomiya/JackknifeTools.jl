@@ -57,6 +57,31 @@ end
 どの関数も `(中心値, 誤差)` を返します。中心値は全サンプルで計算した値で、
 誤差は Jackknife の replica から計算します。
 
+## 図の例
+
+[2 次元 Ising 模型のチュートリアル](tutorials/README.md)の図です。チュートリアルの
+スクリプトが SVG を直接書き出していて、描画パッケージは使っていません。
+
+<p align="center">
+  <img src="tutorials/figures/ising2d_histogram_abs_m.svg" width="49%" alt="Histogram of |m| with block Jackknife error bars">
+  <img src="tutorials/figures/ising2d_block_error_scan.svg" width="49%" alt="Block Jackknife error versus block size">
+</p>
+
+左は `jk_hist` で作った、block Jackknife の誤差棒つきの `|m|` のヒストグラムです。
+右は `jk_block_scan` で求めた `<|m|>` の block Jackknife 誤差を、通常の Jackknife
+誤差で割ったものです。block size が `tau_int` より十分大きくなると、
+`jk_tau_int` で求めた `tau_int` から決まる `sqrt(2 tau_int)` のあたりで平坦に
+なります。
+
+<p align="center">
+  <img src="tutorials/figures/ising2d_autocorrelation.svg" width="49%" alt="Autocorrelation function of |m|">
+  <img src="tutorials/figures/block_jackknife_mean_vs_nblocks.svg" width="49%" alt="Block Jackknife estimate versus number of blocks">
+</p>
+
+左は `jk_autocorr` の自己相関関数と、`jk_tau_int` の自動 window の位置です。
+右は block size を変えたときの `<|m|>` の中心値と block Jackknife 誤差で、
+中心値は誤差の範囲で動きません。
+
 ## 機能
 
 | 用途 | 関数 |
