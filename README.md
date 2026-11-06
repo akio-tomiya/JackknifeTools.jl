@@ -6,6 +6,7 @@
 </p>
 
 [![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
+[![Coverage](https://codecov.io/gh/akio-tomiya/JackknifeTools.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/akio-tomiya/JackknifeTools.jl)
 
 **Author**: A. Tomiya
 
@@ -174,6 +175,9 @@ it overestimates the error by more than a factor of 10.
 ## Vector observables, covariance, and replicas
 
 ```julia
+# a toy correlator C[config, t]: 200 configurations, 8 time slices
+C = [exp(-0.3 * t) * (1 + 0.05 * randn()) for _ in 1:200, t in 0:7]
+
 # effective mass from a correlator C[config, t]
 meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
 
@@ -206,8 +210,10 @@ with the last right edge included. Values outside the edges, `NaN`, and
 for any other normalization:
 
 ```julia
+# 200 configurations with 10 eigenvalues each
+many_configs = [0.03 .* rand(10) for _ in 1:200]
 volume = 32^3 * 8
-hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
+hist = jk_hist(many_configs; bins=20, block=10, scale=1 / volume, density=true)
 ```
 
 JackknifeTools does not depend on a plotting package. With Plots.jl:

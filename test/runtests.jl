@@ -314,6 +314,7 @@ end
     end
 
     include("extensions.jl")
+    include("readme_examples.jl")
 
     @testset "tutorial smoke test" begin
         measurements = Ising2DTutorial.run_ising2d(;

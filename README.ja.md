@@ -6,6 +6,7 @@
 </p>
 
 [![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
+[![Coverage](https://codecov.io/gh/akio-tomiya/JackknifeTools.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/akio-tomiya/JackknifeTools.jl)
 
 **Author**: A. Tomiya
 
@@ -171,6 +172,9 @@ ratio, ratio_err = jk_meanerror((a, b) -> mean(a) / mean(b), A, B; block=50)
 ## ベクトル値の量、共分散、replica
 
 ```julia
+# 試しの相関関数 C[config, t]：200 配位、8 時刻
+C = [exp(-0.3 * t) * (1 + 0.05 * randn()) for _ in 1:200, t in 0:7]
+
 # 相関関数 C[config, t] から有効質量
 meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
 
@@ -202,8 +206,10 @@ hist.edges, hist.centers, hist.values, hist.errors
 `density=true` で bin 幅で割り、それ以外の規格化は `scale` で掛けます。
 
 ```julia
+# 200 配位、1 配位あたり 10 個の固有値
+many_configs = [0.03 .* rand(10) for _ in 1:200]
 volume = 32^3 * 8
-hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
+hist = jk_hist(many_configs; bins=20, block=10, scale=1 / volume, density=true)
 ```
 
 JackknifeTools は描画パッケージに依存しません。Plots.jl なら次のように描けます。
