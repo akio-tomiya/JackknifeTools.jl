@@ -3,7 +3,9 @@
 
 function readme_julia_blocks(path)
     blocks = String[]
-    for m in eachmatch(r"```julia\n(.*?)```"s, read(path, String))
+    # Windows checkouts may have CRLF line endings.
+    text = replace(read(path, String), "\r\n" => "\n")
+    for m in eachmatch(r"```julia\n(.*?)```"s, text)
         code = m.captures[1]
         occursin("pkg>", code) && continue
         occursin("using Plots", code) && continue
