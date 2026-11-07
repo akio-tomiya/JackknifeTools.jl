@@ -1,46 +1,51 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-dark.svg">
-    <img alt="JackknifeTools" src="docs/src/assets/logo.svg" width="520">
+    <img alt="BlockJackknife" src="docs/src/assets/logo.svg" width="520">
   </picture>
 </p>
 
-[![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
+[![CI](https://github.com/akio-tomiya/BlockJackknife.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/BlockJackknife.jl/actions/workflows/CI.yml)
+[![Coverage](https://codecov.io/gh/akio-tomiya/BlockJackknife.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/akio-tomiya/BlockJackknife.jl)
 
 **Author**: A. Tomiya
 
 [Japanese manual](README.ja.md)
 
-JackknifeTools is a small Julia package for Jackknife and block Jackknife error
-estimates of Monte Carlo data. It gives central values and errors for primary
-observables, for nonlinear secondary observables, for observables built from
-several correlated series, and for histograms. It also estimates
-autocorrelation times and scans block sizes.
+BlockJackknife is a small Julia package for the error analysis of
+autocorrelated Monte Carlo histories, such as Markov-chain Monte Carlo or
+lattice QCD measurements, with block Jackknife resampling. It gives central
+values and errors for primary observables, for nonlinear secondary
+observables, for observables built from several correlated series measured on
+the same configurations, and for histograms. It also estimates integrated
+autocorrelation times and scans block sizes, so the block size can be chosen
+from the data.
 
 The package depends only on Julia's standard `Statistics` library. Memory use
 is O(N) in the number of samples, and the mean and histograms take O(N) time,
 so long Monte Carlo histories are fine.
 
-The package was called JkTools before version 1.0. The function names
-(`jk_meanerror`, `jk_hist`, ...) are unchanged.
+The package was called JkTools (and briefly JackknifeTools) before its first
+registered release. The function names (`jk_meanerror`, `jk_hist`, ...) are
+unchanged.
 
 ## Installation
 
 ```julia
-pkg> add JackknifeTools
+pkg> add BlockJackknife
 ```
 
 Until the registration in the General registry is complete, install from
 GitHub:
 
 ```julia
-pkg> add https://github.com/akio-tomiya/JackknifeTools.jl
+pkg> add https://github.com/akio-tomiya/BlockJackknife.jl
 ```
 
 ## Quick start
 
 ```julia
-using JackknifeTools
+using BlockJackknife
 using Statistics
 
 data = randn(10_000)
@@ -129,7 +134,7 @@ jk_meanerror(data; block=50)
 jk_meanerror(data, "sus"; block=50)
 ```
 
-If `length(data)` is not divisible by the block size, JackknifeTools drops the
+If `length(data)` is not divisible by the block size, BlockJackknife drops the
 initial remainder before making equal-size blocks. The central value and the
 replicas both use the data after the drop.
 
@@ -174,6 +179,9 @@ it overestimates the error by more than a factor of 10.
 ## Vector observables, covariance, and replicas
 
 ```julia
+# a toy correlator C[config, t]: 200 configurations, 8 time slices
+C = [exp(-0.3 * t) * (1 + 0.05 * randn()) for _ in 1:200, t in 0:7]
+
 # effective mass from a correlator C[config, t]
 meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
 
@@ -206,11 +214,13 @@ with the last right edge included. Values outside the edges, `NaN`, and
 for any other normalization:
 
 ```julia
+# 200 configurations with 10 eigenvalues each
+many_configs = [0.03 .* rand(10) for _ in 1:200]
 volume = 32^3 * 8
-hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
+hist = jk_hist(many_configs; bins=20, block=10, scale=1 / volume, density=true)
 ```
 
-JackknifeTools does not depend on a plotting package. With Plots.jl:
+BlockJackknife does not depend on a plotting package. With Plots.jl:
 
 ```julia
 using Plots
@@ -231,6 +241,26 @@ series, and histograms, with saved output and figures.
 julia --project=. tutorials/ising2d_jackknife.jl
 julia --project=. tutorials/make_tutorial_artifacts.jl
 ```
+
+## Related packages
+
+- [Jackknife.jl](https://github.com/ararslan/Jackknife.jl) provides
+  leave-one-out Jackknife estimates for independent samples.
+- [BinningAnalysis.jl](https://github.com/carstenbauer/BinningAnalysis.jl)
+  accumulates data in binners (also in a streaming way, with logarithmic
+  binning) and gives errors and autocorrelation times of means. Its
+  `jackknife(g, a, b, ...)` evaluates functions of the means of the series
+  with leave-one-out samples.
+- [MonteCarloJackknife.jl](https://github.com/soneraydin/MonteCarloJackknife.jl)
+  approximates the delete-d Jackknife by random subsampling.
+
+BlockJackknife works on whole recorded histories instead. The statistic is any
+function of the raw samples, not only of means (for example a variance, a
+Binder ratio, or a fit), and it is resampled with contiguous blocks. Several
+series measured on the same configurations are resampled together, and
+vector-valued statistics such as an effective mass from a correlator matrix
+`C[config, t]` give replicas and a covariance matrix for correlated fits.
+Histograms get an error bar for each bin.
 
 ## Input validation
 

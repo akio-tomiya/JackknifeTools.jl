@@ -1,4 +1,4 @@
-using JackknifeTools
+using BlockJackknife
 using Statistics
 using Test
 using Random
@@ -46,7 +46,7 @@ function test_result(got, expected)
     @test got[2] ≈ expected[2]
 end
 
-@testset "JackknifeTools.jl" begin
+@testset "BlockJackknife.jl" begin
     @testset "jackknife indices" begin
         @test jk_index_set([1, 2, 3, 4]) == [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
         @test jk_index_set(1:4) == [[2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]]
@@ -296,7 +296,7 @@ end
     @testset "english help" begin
         help_text = sprint(jk_help)
 
-        @test occursin("JackknifeTools quick help", help_text)
+        @test occursin("BlockJackknife quick help", help_text)
         @test occursin("Histogram with error bars", help_text)
         @test occursin("block=2", help_text)
         @test occursin("Binder ratio", help_text)
@@ -314,6 +314,7 @@ end
     end
 
     include("extensions.jl")
+    include("readme_examples.jl")
 
     @testset "tutorial smoke test" begin
         measurements = Ising2DTutorial.run_ising2d(;

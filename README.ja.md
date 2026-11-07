@@ -1,44 +1,47 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-dark.svg">
-    <img alt="JackknifeTools" src="docs/src/assets/logo.svg" width="520">
+    <img alt="BlockJackknife" src="docs/src/assets/logo.svg" width="520">
   </picture>
 </p>
 
-[![CI](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/JackknifeTools.jl/actions/workflows/CI.yml)
+[![CI](https://github.com/akio-tomiya/BlockJackknife.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/akio-tomiya/BlockJackknife.jl/actions/workflows/CI.yml)
+[![Coverage](https://codecov.io/gh/akio-tomiya/BlockJackknife.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/akio-tomiya/BlockJackknife.jl)
 
 **Author**: A. Tomiya
 
 [English manual](README.md)
 
-JackknifeTools は、Monte Carlo のデータに Jackknife と block Jackknife で誤差を
-付けるための小さな Julia パッケージです。プライマリな物理量、非線形な
-セカンダリな物理量、相関のある複数の測定列から作る量、ヒストグラムについて、
-中心値と誤差を求めます。自己相関時間の見積もりと、block size の走査もできます。
+BlockJackknife は、Markov chain Monte Carlo や格子 QCD の測定のように
+自己相関のある Monte Carlo の履歴に、block Jackknife で誤差を付けるための
+小さな Julia パッケージです。プライマリな物理量、非線形なセカンダリな物理量、
+同じ配位で測った相関のある複数の列から作る量、ヒストグラムについて、中心値と
+誤差を求めます。積分自己相関時間の見積もりと block size の走査もできるので、
+block size をデータから選べます。
 
 依存は Julia 標準ライブラリの `Statistics` だけです。メモリはサンプル数 N に
 比例する分しか使わず、平均とヒストグラムは O(N) の時間で計算するので、
 長い Monte Carlo の履歴もそのまま渡せます。
 
-バージョン 1.0 より前は JkTools という名前でした。関数名 (`jk_meanerror`、
-`jk_hist` など) は変わっていません。
+最初に登録した版より前は JkTools という名前で、短い間 JackknifeTools とも
+呼んでいました。関数名 (`jk_meanerror`、`jk_hist` など) は変わっていません。
 
 ## インストール
 
 ```julia
-pkg> add JackknifeTools
+pkg> add BlockJackknife
 ```
 
 General レジストリへの登録が終わるまでは、GitHub から入れてください。
 
 ```julia
-pkg> add https://github.com/akio-tomiya/JackknifeTools.jl
+pkg> add https://github.com/akio-tomiya/BlockJackknife.jl
 ```
 
 ## 使い方の例
 
 ```julia
-using JackknifeTools
+using BlockJackknife
 using Statistics
 
 data = randn(10_000)
@@ -171,6 +174,9 @@ ratio, ratio_err = jk_meanerror((a, b) -> mean(a) / mean(b), A, B; block=50)
 ## ベクトル値の量、共分散、replica
 
 ```julia
+# 試しの相関関数 C[config, t]：200 配位、8 時刻
+C = [exp(-0.3 * t) * (1 + 0.05 * randn()) for _ in 1:200, t in 0:7]
+
 # 相関関数 C[config, t] から有効質量
 meff(c) = (ct = vec(mean(c; dims=1)); log.(ct[1:end-1] ./ ct[2:end]))
 
@@ -202,11 +208,13 @@ hist.edges, hist.centers, hist.values, hist.errors
 `density=true` で bin 幅で割り、それ以外の規格化は `scale` で掛けます。
 
 ```julia
+# 200 配位、1 配位あたり 10 個の固有値
+many_configs = [0.03 .* rand(10) for _ in 1:200]
 volume = 32^3 * 8
-hist = jk_hist(eigenvalues_by_config; bins=20, block=2, scale=1 / volume, density=true)
+hist = jk_hist(many_configs; bins=20, block=10, scale=1 / volume, density=true)
 ```
 
-JackknifeTools は描画パッケージに依存しません。Plots.jl なら次のように描けます。
+BlockJackknife は描画パッケージに依存しません。Plots.jl なら次のように描けます。
 
 ```julia
 using Plots
@@ -227,6 +235,23 @@ Jackknife と block Jackknife、自己相関関数と自己相関時間、block 
 julia --project=. tutorials/ising2d_jackknife.jl
 julia --project=. tutorials/make_tutorial_artifacts.jl
 ```
+
+## 関連するパッケージ
+
+- [Jackknife.jl](https://github.com/ararslan/Jackknife.jl) は、独立なサンプルに
+  1 点抜きの Jackknife を行います。
+- [BinningAnalysis.jl](https://github.com/carstenbauer/BinningAnalysis.jl) は、
+  データを binner に溜め (対数 binning で逐次に溜めることもできます)、平均の誤差と
+  自己相関時間を返します。`jackknife(g, a, b, ...)` は、各列の平均の関数を
+  1 点抜きで評価します。
+- [MonteCarloJackknife.jl](https://github.com/soneraydin/MonteCarloJackknife.jl) は、
+  delete-d Jackknife をランダムな部分標本で近似します。
+
+BlockJackknife は、記録した履歴の全体を受け取ります。統計量は平均の関数に限らず、
+生のサンプルの任意の関数 (分散、Binder ratio、fit など) でよく、それを連続した
+block で再標本化します。同じ配位で測った複数の列はまとめて再標本化し、相関関数の
+行列 `C[config, t]` から作る有効質量のようなベクトル値の量では、相関のある fit に
+使う replica と共分散行列を返します。ヒストグラムには bin ごとの誤差を付けます。
 
 ## 入力の検査
 

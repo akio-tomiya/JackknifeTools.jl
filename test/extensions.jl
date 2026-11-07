@@ -302,5 +302,5 @@ end
 end
 
 @testset "Aqua" begin
-    Aqua.test_all(JackknifeTools)
+    Aqua.test_all(BlockJackknife)
 end

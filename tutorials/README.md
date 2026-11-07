@@ -2,7 +2,7 @@
 
 このノートでは、2 次元 Ising 模型を題材に、Monte Carlo 測定値の統計誤差、
 自己相関、誤差の伝播、Jackknife 法、Block Jackknife 法、相関のある複数の
-測定列から作る量、histogram の誤差棒を順に扱う。解析には JackknifeTools を使う。
+測定列から作る量、histogram の誤差棒を順に扱う。解析には BlockJackknife を使う。
 
 実行例は次の script に入っている。
 
@@ -298,7 +298,7 @@ $$
 
 を primary observable とする。
 
-JackknifeTools では、平均値と Jackknife error を
+BlockJackknife では、平均値と Jackknife error を
 
 ```julia
 energy = jk_meanerror(energies)
@@ -386,7 +386,7 @@ cv_val, cv_err = jk_meanerror(energies, specific_heat)
 
 ### Binder ratio
 
-JackknifeTools の `"binder"` と `"bin"` は以下を返す。
+BlockJackknife の `"binder"` と `"bin"` は以下を返す。
 
 $$
 B =
@@ -536,7 +536,7 @@ $$
 }
 $$
 
-JackknifeTools では central value は full sample から計算する。
+BlockJackknife では central value は full sample から計算する。
 
 $$
 \theta_\mathrm{central}
@@ -609,7 +609,7 @@ $$
 である。$t=0$ では $\rho(0)=1$ であり、相関がなくなると $\rho(t)\to 0$ へ
 近づく。
 
-JackknifeTools では `jk_autocorr(series, max_lag)` が
+BlockJackknife では `jk_autocorr(series, max_lag)` が
 $\rho(0),\dots,\rho(t_\mathrm{max})$ を返す。
 
 ```julia
@@ -697,7 +697,7 @@ $\chi'$ を主に使ったのは、この遅い自由度を避けるためであ
 自己相関がある場合、1 点ずつ抜く Jackknife では誤差を過小評価する。
 Block Jackknife では、連続した測定値を block にまとめ、1 block ずつ抜く。
 
-測定数を $N$、block size を $b$ とする。JackknifeTools では
+測定数を $N$、block size を $b$ とする。BlockJackknife では
 
 $$
 r = N \bmod b
@@ -867,7 +867,7 @@ $$
 \right)
 $$
 
-右辺は $|m|$ の列と $e$ の列の両方から作る。JackknifeTools では、関数を
+右辺は $|m|$ の列と $e$ の列の両方から作る。BlockJackknife では、関数を
 先頭に置き、列を順に渡す。全ての列から同じ測定 (block を使うときは同じ
 block) を抜くので、列どうしの相関が保たれる。
 

@@ -1,11 +1,11 @@
 """
-    JackknifeTools
+    BlockJackknife
 
 Small tools for ordinary Jackknife, block Jackknife, histogram error
 estimates, and autocorrelation analysis. Use Julia help mode, for example
 `?jk_meanerror`, or call `jk_help()` for a short overview.
 """
-module JackknifeTools
+module BlockJackknife
 
 using Statistics  # Provides functions for statistical calculations
 
@@ -19,7 +19,7 @@ export jk_autocorr, jk_tau_int, jk_block_scan
 export jk_help
 
 const _HELP_EN = """
-JackknifeTools quick help
+BlockJackknife quick help
 
 Ordinary Jackknife:
   jk_meanerror(data)
@@ -66,7 +66,7 @@ Histogram results have:
 """
     jk_help([io::IO=stdout]) -> nothing
 
-Prints a short English JackknifeTools help message.
+Prints a short English BlockJackknife help message.
 """
 function jk_help(io::IO=stdout)
     print(io, _HELP_EN)

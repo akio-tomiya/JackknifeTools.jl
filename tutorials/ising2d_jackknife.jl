@@ -1,6 +1,6 @@
 module Ising2DTutorial
 
-using JackknifeTools
+using BlockJackknife
 using Statistics
 
 export analyze_measurements, integrated_autocorrelation_time, main, run_ising2d, suggested_block_size, write_summary
